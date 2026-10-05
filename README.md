@@ -7,6 +7,8 @@ the year, where it will be on Christmas Eve. Live at **https://roho.foo/santa/**
 
 ![Christmas Eve preview, 23:40 UTC: Santa over West Africa, the night side of Earth shaded from the real sun position](docs/preview.png)
 
+![Santa's view: the globe from the sleigh over Almaty, north up, the route and the solar-midnight line drawn on the sphere](docs/santas-view.png)
+
 ## What it does
 
 - **Live mode.** Before December 24 the sleigh is parked at the North Pole with
@@ -18,6 +20,20 @@ the year, where it will be on Christmas Eve. Live at **https://roho.foo/santa/**
   Christmas Eve* (today's time of day, dropped onto the big night), and *My
   midnight* (jump to when Santa reaches your time zone). Any instant can be
   deep-linked with `?t=2026-12-24T18:00Z`.
+- **Two views.** *Mission control* is the whole world on an equirectangular
+  map. *Santa's view* is an orthographic globe centred on the sleigh, north
+  up: Santa stays in the middle, the world turns under him, a gold arrow is
+  his heading to the next stop, and the night side, the solar-midnight line,
+  the route and the stops are all drawn on the sphere. The choice sticks
+  (`localStorage`) and `?view=pov` deep-links it.
+- **Efficient routes.** Santa is all about efficiency. Inside each time zone
+  the order is a travelling-salesman plan: nearest-neighbour tours from the
+  cities closest to where the sleigh is coming from, polished with 2-opt
+  until no two legs cross. The elves accept any plan within 6 % of the best
+  one found, and the year's seed picks among those, so every year is a
+  different route and every route is tight (about 320,000 km, each year
+  within ~1 % of the best plan; the archive cards show the figure). Every
+  route starts and ends at the Workshop.
 - **A real map.** Natural Earth coastlines (110 m, embedded as TopoJSON and
   decoded in the page), the flown track in gold, upcoming stops dotted, and
   the **actual day/night terminator** computed from the sun's position for the
@@ -51,12 +67,15 @@ year (standard time in the north, summer time where the south observes it).
 Zones run from UTC+14 (Kiritimati, 10:00 UTC Dec 24) to UTC−11 (Pago Pago and
 Niue, 11:00 UTC Dec 25). Inside a zone the cities are spread evenly across that
 zone's hour, so every city is reached within 30 minutes of its midnight; the
-*order* inside the zone is the year's plan, drawn per zone from a seeded PRNG
-(`hash32(year, zoneIndex)` → mulberry32): a nearest-neighbour tour starting
-from the city closest to where Santa just was, or a north–south, south–north
-or east–west sweep. Dwell per city is 30 % of the gap to the next one, capped
-at six minutes; in between, the sleigh flies the great circle. Launch is one
-hour before the first stop, home one hour after the last.
+*order* inside the zone is the year's plan (`orderBand`): candidate tours are
+nearest-neighbour from each of the four cities closest to where Santa is
+coming from (the Workshop for the first zone) plus a few seeded starts, each
+improved with 2-opt (`twoOpt`), and the seeded PRNG (`hash32(year,
+zoneIndex)` → mulberry32) picks among the candidates within `PLAN_TOLERANCE`
+(6 %) of the shortest. `route.efficiency` is best ÷ chosen over all zones.
+Dwell per city is 30 % of the gap to the next one, capped at six minutes; in
+between, the sleigh flies the great circle. Launch is one hour before the
+first stop, home one hour after the last.
 
 **Time-zone history** (`TZ_HISTORY` in `src/engine.mjs`): Samoa observed
 summer time through 2020 (UTC+14 on Christmas Eve), Tonga tried it once in
@@ -91,7 +110,7 @@ test/             node:test suite for the engine
 ```
 
 ```
-npm test              # 22 engine tests
+npm test              # 25 engine tests
 node build.mjs        # writes dist/index.html
 ```
 

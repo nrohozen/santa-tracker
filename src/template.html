@@ -46,6 +46,32 @@
   </section>
 
   <section class="card mapcard">
+    <div class="views" role="group" aria-label="Point of view">
+      <button id="view-map" class="chip is-on" aria-pressed="true" title="The whole world, from the North Pole's operations room">🗺 Mission control</button>
+      <button id="view-pov" class="chip" aria-pressed="false" title="The globe from the sleigh: Santa stays in the middle, the world turns under him">🛷 Santa's view</button>
+    </div>
+    <svg id="pov" class="pov" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The globe as seen from Santa's sleigh, with the night side, the route and the next stop" hidden>
+      <defs><clipPath id="pov-clip"><circle cx="500" cy="250" r="560"/></clipPath></defs>
+      <rect class="space" x="0" y="0" width="1000" height="500"/>
+      <g clip-path="url(#pov-clip)">
+        <circle class="ocean" cx="500" cy="250" r="560"/>
+        <path id="pov-land" class="pov-land"/>
+        <path id="pov-grat" class="pov-grat"/>
+        <path id="pov-night" class="night" fill-rule="evenodd"/>
+        <path id="pov-midnight" class="midnight"/>
+        <path id="pov-future" class="route-future"/>
+        <path id="pov-past" class="route-past"/>
+        <g id="pov-stops"/>
+        <g id="pov-home" class="pole" visibility="hidden"><text text-anchor="middle" dy=".36em">🏠</text></g>
+      </g>
+      <g id="pov-sleigh" class="sleigh" transform="translate(500 250)">
+        <g id="pov-heading" visibility="hidden"><path class="heading" d="M0 -52 L9 -34 L-9 -34 Z"/><line class="heading-line" x1="0" y1="-34" x2="0" y2="-20"/></g>
+        <circle class="sleigh-halo" r="22" fill="url(#halo)"/><text class="sleigh-icon" text-anchor="middle" dy=".36em">🎅</text>
+      </g>
+      <text class="pov-n" x="500" y="20" text-anchor="middle">N</text>
+      <text id="pov-coords" class="pov-caption mono" x="984" y="24" text-anchor="end"></text>
+      <text id="pov-caption" class="pov-caption" x="16" y="484"></text>
+    </svg>
     <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map showing Santa's position, his route, and the night side of Earth">
       <defs>
         <clipPath id="clip"><rect x="0" y="0" width="1000" height="500"/></clipPath>
@@ -123,7 +149,7 @@
 
   <section class="card archive" aria-labelledby="archive-h">
     <h2 id="archive-h">Flight archive</h2>
-    <p class="archive-intro">Every route from the last ten Christmases. Santa never flies the same scribble twice: the elves draw a new plan for each time zone every year, and whenever a country moves its clocks, his order of business moves with it. Pick a year to replay it.</p>
+    <p class="archive-intro">Every route from the last ten Christmases, each one out of the Workshop and back. Santa never flies the same route twice, but he is all about efficiency: the elves draw a fresh plan for each time zone every year from the handful of tightest plans they can find, and whenever a country moves its clocks, his order of business moves with it. Pick a year to replay it.</p>
     <div class="years" id="years"></div>
     <p class="hint" id="year-notes"></p>
   </section>
@@ -131,9 +157,11 @@
   <details class="card how">
     <summary>How this works</summary>
     <div class="how-body">
-      <p><strong>The route.</strong> Santa delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour in the order of that year's plan, with at most six minutes per city. Between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>The route.</strong> Santa leaves the Workshop at the North Pole and delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour, with at most six minutes per city, and between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>Santa is all about efficiency.</strong> The order inside each zone is a travelling-salesman plan: nearest-neighbour tours starting from the cities closest to where the sleigh is coming from, polished with 2-opt until no two legs cross. The elves accept any plan within 6&nbsp;% of the best one they found, and the year's seed picks among those, so every Christmas is a different route and every route is a tight one. Each year's card shows how close it came to the best plan.</p>
+      <p><strong>Two views.</strong> <em>Mission control</em> is the whole world from the Workshop's operations room. <em>Santa's view</em> is the globe from the sleigh: he stays in the middle with north up, the world turns under him, the arrow is his heading to the next stop, and the night side and the solar-midnight line are drawn on the sphere.</p>
       <p><strong>Every country.</strong> <span id="how-countries"></span></p>
-      <p><strong>The archive.</strong> Each year's plan is seeded by the year, so 2019 looks the same for everyone, forever. On top of that the stop list carries real history: Samoa (2021) and Fiji (2022) stopped observing summer time, Brazil abolished it in 2019, Tonga tried it exactly once in 2016, Morocco went to permanent UTC+1 in late 2018, Sudan and South Sudan each moved their clocks back an hour, Jordan and Syria stopped changing theirs in 2022, Greenland moved to UTC−2 in 2023, and Kazakhstan unified on UTC+5 in 2024. In each case the city's midnight moved, so its place in the route moved too. The night shading for a past year is that year's real sun.</p>
+      <p><strong>The archive.</strong> Each year's plan is seeded by the year, so 2019 looks the same for everyone, forever, and every year starts and ends at the Workshop. On top of that the stop list carries real history: Samoa (2021) and Fiji (2022) stopped observing summer time, Brazil abolished it in 2019, Tonga tried it exactly once in 2016, Morocco went to permanent UTC+1 in late 2018, Sudan and South Sudan each moved their clocks back an hour, Jordan and Syria stopped changing theirs in 2022, Greenland moved to UTC−2 in 2023, and Kazakhstan unified on UTC+5 in 2024. In each case the city's midnight moved, so its place in the route moved too. The night shading for a past year is that year's real sun.</p>
       <p><strong>The shading is real.</strong> The dark side of the map is computed from the actual position of the sun for the instant on the clock (its declination and the subsolar point), so in December the whole Arctic is in polar night. The dashed line is solar midnight. Santa stays within a couple of hours of it all night, and the gap you see is the difference between the sun and the time zones people actually chose.</p>
       <p><strong>Preview mode</strong> is the same code with a simulated clock. Nothing else changes, so what you see in the preview is exactly what the live tracker will show on the night. A <code>?t=</code> parameter in the address deep-links any instant.</p>
       <p><strong>The numbers.</strong> Presents are a quarter of each metro population. Altitude, cookies and the lead reindeer are derived from the clock, so they are the same for everyone looking at the same moment. The rest is theatre.</p>

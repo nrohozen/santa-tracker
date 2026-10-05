@@ -6,6 +6,61 @@
   const px = p => [(p.lon + 180) / 360 * W, (90 - p.lat) / 180 * H];
   const SVG = 'http://www.w3.org/2000/svg';
   const el = (tag, attrs = {}) => { const n = document.createElementNS(SVG, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  const rad = d => d * Math.PI / 180;
+
+  // ---------- Santa's view: an orthographic globe centred on the sleigh, north up ----------
+  const PR = 560, PCX = 500, PCY = 250; // globe radius and centre inside the 1000×500 box
+  function ortho(c, p) {
+    const la = rad(p.lat), lo = rad(p.lon - c.lon), la0 = rad(c.lat);
+    const x = Math.cos(la) * Math.sin(lo);
+    const y = Math.cos(la0) * Math.sin(la) - Math.sin(la0) * Math.cos(la) * Math.cos(lo);
+    const z = Math.sin(la0) * Math.sin(la) + Math.cos(la0) * Math.cos(la) * Math.cos(lo);
+    return { x: PCX + PR * x, y: PCY - PR * y, vis: z > 0 };
+  }
+  const clampRim = q => { const dx = q.x - PCX, dy = q.y - PCY, L = Math.hypot(dx, dy) || 1; return { x: PCX + dx / L * PR, y: PCY + dy / L * PR }; };
+  const pt = q => q.x.toFixed(1) + ' ' + q.y.toFixed(1);
+  // Polygons as rings of [lon, lat]. Hidden vertices are pushed to the horizon so partly visible shapes still fill.
+  function orthoRings(c, polys) {
+    let d = '';
+    for (const poly of polys) for (const ring of poly) {
+      let any = false, s = '';
+      ring.forEach(([lon, lat], i) => { const q = ortho(c, { lat, lon }); any = any || q.vis; s += (i ? 'L' : 'M') + pt(q.vis ? q : clampRim(q)); });
+      if (any) d += s + 'Z';
+    }
+    return d;
+  }
+  function orthoLine(c, pts) {
+    let d = '', pen = false;
+    for (const p of pts) { const q = ortho(c, p); if (!q.vis) { pen = false; continue; } d += (pen ? 'L' : 'M') + pt(q); pen = true; }
+    return d;
+  }
+  const toVec = p => { const la = rad(p.lat), lo = rad(p.lon); return [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)]; };
+  const fromVec = ([x, y, z]) => ({ lat: Math.atan2(z, Math.hypot(x, y)) * 180 / Math.PI, lon: Math.atan2(y, x) * 180 / Math.PI });
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = a => { const L = Math.hypot(...a); return [a[0] / L, a[1] / L, a[2] / L]; };
+  // The night side as seen from c. The terminator is the great circle 90° from the sun; with hidden
+  // vertices clamped to the horizon, the polygon is the visible night when the night's centre is in
+  // view and the visible day otherwise, in which case we take the complement (evenodd with the disk).
+  function orthoNight(c, sun) {
+    const S = toVec(sun);
+    let u = cross(S, [0, 0, 1]); u = Math.hypot(...u) < 1e-6 ? [1, 0, 0] : norm(u);
+    const v = cross(S, u);
+    let d = '';
+    for (let a = 0; a <= 360; a += 2) {
+      const r = rad(a), p = fromVec([Math.cos(r) * u[0] + Math.sin(r) * v[0], Math.cos(r) * u[1] + Math.sin(r) * v[1], Math.cos(r) * u[2] + Math.sin(r) * v[2]]);
+      const q = ortho(c, p); d += (a ? 'L' : 'M') + pt(q.vis ? q : clampRim(q));
+    }
+    d += 'Z';
+    const anti = { lat: -sun.lat, lon: wrapLon(sun.lon + 180) };
+    if (!ortho(c, anti).vis) d += `M${PCX - PR} ${PCY}a${PR} ${PR} 0 1 0 ${2 * PR} 0a${PR} ${PR} 0 1 0 ${-2 * PR} 0Z`;
+    return d;
+  }
+  const graticuleLines = (() => {
+    const lines = [];
+    for (let lon = -180; lon < 180; lon += 30) { const l = []; for (let lat = -90; lat <= 90; lat += 5) l.push({ lat, lon }); lines.push(l); }
+    for (let lat = -60; lat <= 60; lat += 30) { const l = []; for (let lon = -180; lon <= 180; lon += 5) l.push({ lat, lon }); lines.push(l); }
+    return lines;
+  })();
 
   // ---------- years + routes ----------
   const currentYear = missionYear(new Date());
@@ -36,7 +91,8 @@
     return d;
   };
 
-  $('land').appendChild(el('path', { id: 'land-path', d: ringsToPath(decodeTopo(LAND_TOPO, 'land')), 'fill-rule': 'evenodd' }));
+  const landPolys = decodeTopo(LAND_TOPO, 'land');
+  $('land').appendChild(el('path', { id: 'land-path', d: ringsToPath(landPolys), 'fill-rule': 'evenodd' }));
   const grat = $('graticule');
   for (let lon = -150; lon <= 150; lon += 30) grat.appendChild(el('line', { x1: px({ lat: 0, lon })[0], x2: px({ lat: 0, lon })[0], y1: 0, y2: H }));
   for (let lat = -60; lat <= 60; lat += 30) grat.appendChild(el('line', { y1: px({ lat, lon: 0 })[1], y2: px({ lat, lon: 0 })[1], x1: 0, x2: W }));
@@ -54,19 +110,24 @@
   };
 
   // ---------- per-route DOM (stops, future track, labels) ----------
-  const stopEls = [];
+  const stopEls = [], povStopEls = [];
+  let fullTrack = [];
   function applyRouteDom() {
     const g = $('stops'); g.textContent = ''; stopEls.length = 0;
+    const pg = $('pov-stops'); pg.textContent = ''; povStopEls.length = 0;
     for (const w of route.waypoints) {
       if (w.pole) continue;
       const [cx, cy] = px(w);
+      const label = `${w.name}, ${w.country} (${fmtOffset(w.utc)}) · arrives ${localStamp(w)} (${fmtClockUtc(w.arrive)} UTC) · ${big(w.presents)} presents`;
       const c = el('circle', { cx: cx.toFixed(1), cy: cy.toFixed(1), class: 'stop' });
-      const title = el('title');
-      title.textContent = `${w.name}, ${w.country} (${fmtOffset(w.utc)}) · arrives ${localStamp(w)} (${fmtClockUtc(w.arrive)} UTC) · ${big(w.presents)} presents`;
-      c.appendChild(title);
+      const title = el('title'); title.textContent = label; c.appendChild(title);
       g.appendChild(c); stopEls.push([w, c]);
+      const pc = el('circle', { class: 'stop', visibility: 'hidden' });
+      const pTitle = el('title'); pTitle.textContent = label; pc.appendChild(pTitle);
+      pg.appendChild(pc); povStopEls.push([w, pc]);
     }
-    $('route-future').setAttribute('d', polyline(track(route, route.launch, route.home)));
+    fullTrack = track(route, route.launch, route.home);
+    $('route-future').setAttribute('d', polyline(fullTrack));
     $('scrub').min = route.launch; $('scrub').max = route.home; $('scrub').value = route.launch;
     $('scrub-min').textContent = `Launch · ${utcStamp(route.launch)}`;
     $('scrub-max').textContent = `Home · ${utcStamp(route.home)}`;
@@ -98,7 +159,7 @@
     svg.appendChild(el('path', { class: 'mini-route', d: polyline(track(r, r.launch, r.home, 3 * MIN)) }));
     const label = document.createElement('span'); label.className = 'year-label'; label.textContent = y === currentYear ? `${y} · this year` : String(y);
     const meta = document.createElement('span'); meta.className = 'year-meta';
-    meta.textContent = `${r.stopCount} stops · ${fmtInt(r.totalKm)} km${r.changes.length ? ` · ${r.changes.length} clock change${r.changes.length > 1 ? 's' : ''}` : ''}`;
+    meta.textContent = `${r.stopCount} stops · ${fmtInt(r.totalKm)} km · ${(r.efficiency * 100).toFixed(1)}% of best plan${r.changes.length ? ` · ${r.changes.length} clock change${r.changes.length > 1 ? 's' : ''}` : ''}`;
     b.append(svg, label, meta);
     b.onclick = () => { setYear(y); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     yearsEl.appendChild(b);
@@ -116,6 +177,7 @@
   let playing = false;
   let speed = 600; // simulated seconds per real second
   let lastTs = null, lastLiveRender = 0, lastLogKey = '';
+  let view = 'map', lastT = null;
 
   const clamp = t => Math.min(route.home, Math.max(route.launch, t));
   const nowOnChristmasEve = () => {
@@ -206,17 +268,9 @@
       $('hint').hidden = true;
     }
 
-    // map
-    $('night').setAttribute('d', polyline(nightPolygon(s.sun)) + 'Z');
-    const mx = px({ lat: 0, lon: s.midnightLon })[0];
-    $('midnight').setAttribute('x1', mx); $('midnight').setAttribute('x2', mx);
-    $('route-past').setAttribute('d', s.phase === 'flight' ? polyline(track(route, route.launch, t)) : '');
-    const [sx, sy] = px(s);
-    $('sleigh').setAttribute('transform', `translate(${sx.toFixed(1)} ${Math.max(16, sy).toFixed(1)})`);
-    for (const [w, c] of stopEls) {
-      c.classList.toggle('done', w.depart <= t || s.phase === 'done');
-      c.classList.toggle('next', s.phase === 'flight' && s.next === w);
-    }
+    // map or Santa's view
+    lastT = t;
+    if (view === 'pov') renderPov(s, t, tel); else renderMap(s, t);
 
     // tiles
     $('t-presents').textContent = big(s.presents);
@@ -274,6 +328,62 @@
     }
   }
 
+  function renderMap(s, t) {
+    $('night').setAttribute('d', polyline(nightPolygon(s.sun)) + 'Z');
+    const mx = px({ lat: 0, lon: s.midnightLon })[0];
+    $('midnight').setAttribute('x1', mx); $('midnight').setAttribute('x2', mx);
+    $('route-past').setAttribute('d', s.phase === 'flight' ? polyline(track(route, route.launch, t)) : '');
+    const [sx, sy] = px(s);
+    $('sleigh').setAttribute('transform', `translate(${sx.toFixed(1)} ${Math.max(16, sy).toFixed(1)})`);
+    for (const [w, c] of stopEls) {
+      c.classList.toggle('done', w.depart <= t || s.phase === 'done');
+      c.classList.toggle('next', s.phase === 'flight' && s.next === w);
+    }
+  }
+
+  function renderPov(s, t, tel) {
+    const c = { lat: s.lat, lon: s.lat > 89.99 ? 0 : s.lon };
+    $('pov-land').setAttribute('d', orthoRings(c, landPolys));
+    $('pov-grat').setAttribute('d', graticuleLines.map(l => orthoLine(c, l)).join(''));
+    $('pov-night').setAttribute('d', orthoNight(c, s.sun));
+    const mer = []; for (let lat = -90; lat <= 90; lat += 3) mer.push({ lat, lon: s.midnightLon });
+    $('pov-midnight').setAttribute('d', orthoLine(c, mer));
+    $('pov-future').setAttribute('d', orthoLine(c, fullTrack));
+    $('pov-past').setAttribute('d', s.phase === 'flight' ? orthoLine(c, track(route, route.launch, t)) : '');
+    const home = ortho(c, { lat: 89.5, lon: c.lon }); // the Workshop sits on the pole; show it when it is over the horizon
+    $('pov-home').setAttribute('visibility', home.vis ? 'visible' : 'hidden');
+    $('pov-home').setAttribute('transform', `translate(${home.x.toFixed(1)} ${home.y.toFixed(1)})`);
+    for (const [w, ce] of povStopEls) {
+      const q = ortho(c, w);
+      ce.setAttribute('visibility', q.vis ? 'visible' : 'hidden');
+      if (q.vis) { ce.setAttribute('cx', q.x.toFixed(1)); ce.setAttribute('cy', q.y.toFixed(1)); }
+      ce.classList.toggle('done', w.depart <= t || s.phase === 'done');
+      ce.classList.toggle('next', s.phase === 'flight' && s.next === w);
+    }
+    const hdg = s.next ? bearing(s, s.next) : 0;
+    const flying = s.phase === 'flight' && s.status === 'enroute';
+    $('pov-heading').setAttribute('transform', `rotate(${hdg.toFixed(0)})`);
+    $('pov-heading').setAttribute('visibility', flying ? 'visible' : 'hidden');
+    const nextName = s.next ? (s.next.pole ? 'the Workshop' : s.next.name) : '';
+    const nextKm = s.next ? `${fmtInt(haversineKm(s, s.next))} km` : '';
+    let cap;
+    if (s.phase === 'pre') cap = `Over the Workshop · ${fmtDuration(s.untilLaunchMs)} to launch · first stop ${s.next.name}, ${nextKm} due south`;
+    else if (s.phase === 'done') cap = 'Home. Looking down at the Workshop; the lights are off.';
+    else if (s.status === 'delivering') cap = `On the rooftops of ${s.at.name} · next ${nextName}, ${nextKm}, bearing ${hdg.toFixed(0)}°`;
+    else cap = `Heading ${hdg.toFixed(0)}° at ${fmtInt(tel.altitudeM)} m · ${nextName} ${nextKm} ahead · ${fmtInt(s.speedKmh)} km/h`;
+    $('pov-caption').textContent = cap;
+    $('pov-coords').textContent = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
+  }
+
+  function setView(v) {
+    view = v;
+    $('map').hidden = v !== 'map'; $('pov').hidden = v !== 'pov';
+    $('view-map').classList.toggle('is-on', v === 'map'); $('view-map').setAttribute('aria-pressed', String(v === 'map'));
+    $('view-pov').classList.toggle('is-on', v === 'pov'); $('view-pov').setAttribute('aria-pressed', String(v === 'pov'));
+    try { localStorage.setItem('santa_view', v); } catch { /* private window etc. */ }
+    if (lastT != null) render(lastT);
+  }
+
   // ---------- loop ----------
   function frame(ts) {
     if (lastTs == null) lastTs = ts;
@@ -293,6 +403,8 @@
   }
 
   // ---------- wiring ----------
+  $('view-map').onclick = () => setView('map');
+  $('view-pov').onclick = () => setView('pov');
   $('mode-live').onclick = () => setMode('live');
   $('mode-preview').onclick = () => setMode('preview');
   $('hint-preview').onclick = () => setMode('preview');
@@ -315,6 +427,9 @@
   const params = new URLSearchParams(location.search);
   const tParam = params.get('t') ? Date.parse(params.get('t')) : NaN;
   const yParam = params.get('y') ? parseInt(params.get('y'), 10) : NaN;
+  let savedView = null; try { savedView = localStorage.getItem('santa_view'); } catch { /* ignore */ }
+  const wantView = params.get('view') || savedView;
+  if (wantView === 'pov') { view = 'pov'; $('map').hidden = true; $('pov').hidden = false; $('view-map').classList.remove('is-on'); $('view-pov').classList.add('is-on'); $('view-pov').setAttribute('aria-pressed', 'true'); $('view-map').setAttribute('aria-pressed', 'false'); }
   if (!Number.isNaN(tParam)) { applyYear(new Date(tParam).getUTCFullYear()); setMode('preview', tParam); }
   else if (!Number.isNaN(yParam) && yParam !== currentYear) { setYear(yParam); }
   else { applyYear(currentYear); setMode(params.get('mode') === 'preview' ? 'preview' : 'live'); }

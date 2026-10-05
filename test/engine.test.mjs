@@ -5,6 +5,7 @@ import {
   STOPS, HOUR, MIN, buildRoute, stateAt, subsolarPoint, terminatorLat, nightPolygon, antisolarLon,
   slerp, haversineKm, decodeTopo, missionYear, arrivalForOffset, telemetry, missionLog, track, wrapLon,
   SKIPPED, stopsForYear, routeChanges, TZ_HISTORY, orderBand, hash32, mulberry32, ARCHIVE_YEARS,
+  pathKm, twoOpt, PLAN_TOLERANCE, bearing,
 } from '../src/engine.mjs';
 
 const YEAR = 2026;
@@ -216,15 +217,44 @@ test('clock changes move a city in the order: São Paulo leaves the UTC-2 slot i
   assert.equal(w(r19, 'São Paulo').utc, w(r19, 'Buenos Aires').utc, '2019: same band');
 });
 
-test('orderBand strategies and the seeded PRNG are stable', () => {
+test('orderBand is a permutation, near-optimal, and the seeded PRNG is stable', () => {
   const a = mulberry32(hash32(2019, 3)), b = mulberry32(hash32(2019, 3));
   assert.equal(a(), b());
   assert.notEqual(hash32(2019, 3), hash32(2020, 3));
   const group = STOPS.filter(s => s.utc === 1);
-  const o = orderBand(group, 2019, 7, null);
+  const from = STOPS.find(s => s.name === 'Cairo');
+  const o = orderBand(group, 2019, 7, from);
   assert.equal(o.order.length, group.length);
   assert.equal(new Set(o.order.map(s => s.name)).size, group.length);
-  assert.ok(['nearest', 'north-south', 'south-north', 'east-west'].includes(o.strategy));
+  assert.ok(o.km <= o.bestKm * PLAN_TOLERANCE + 1e-6, 'within tolerance of the best plan');
+  assert.ok(Math.abs(pathKm(o.order, from) - o.km) < 1e-6);
+  // a naive north-to-south sweep of Europe+Africa is far longer than the plan
+  const sweep = group.slice().sort((x, y) => y.lat - x.lat);
+  assert.ok(pathKm(sweep, from) > o.km * 1.5, `plan ${o.km.toFixed(0)} km vs sweep ${pathKm(sweep, from).toFixed(0)} km`);
+});
+
+test('2-opt never lengthens a path and removes an obvious crossing', () => {
+  const sq = [{ lat: 0, lon: 0 }, { lat: 10, lon: 10 }, { lat: 0, lon: 10 }, { lat: 10, lon: 0 }]; // a bow-tie
+  const from = { lat: -5, lon: 0 };
+  const fixed = twoOpt(sq, from);
+  assert.ok(pathKm(fixed, from) < pathKm(sq, from) - 100);
+  assert.equal(new Set(fixed.map(p => `${p.lat},${p.lon}`)).size, 4);
+});
+
+test('every year is efficient: ~99% of the best plan, well under the old serpentine', () => {
+  for (let y = YEAR - ARCHIVE_YEARS; y <= YEAR; y++) {
+    const r = buildRoute(y);
+    assert.ok(r.efficiency >= 1 / PLAN_TOLERANCE - 1e-9 && r.efficiency <= 1 + 1e-9, `${y} efficiency ${r.efficiency}`);
+    assert.ok(r.totalKm < 340_000, `${y} flies ${r.totalKm.toFixed(0)} km`);
+    assert.equal(r.waypoints[0].pole, true, 'starts at the Workshop');
+    assert.equal(r.waypoints.at(-1).pole, true, 'ends at the Workshop');
+  }
+});
+
+test('bearing: due east along the equator, due north up a meridian', () => {
+  assert.ok(Math.abs(bearing({ lat: 0, lon: 0 }, { lat: 0, lon: 10 }) - 90) < 1e-6);
+  assert.ok(Math.abs(bearing({ lat: 0, lon: 0 }, { lat: 10, lon: 0 }) - 0) < 1e-6);
+  assert.ok(Math.abs(bearing({ lat: 10, lon: 0 }, { lat: 0, lon: 0 }) - 180) < 1e-6);
 });
 
 test('telemetry, log and track are deterministic and bounded', () => {

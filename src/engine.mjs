@@ -143,25 +143,82 @@ export function mulberry32(seed) {
   };
 }
 
-const STRATEGIES = ['nearest', 'north-south', 'nearest', 'south-north', 'east-west', 'nearest'];
-const nearestTo = (p, list) => list.reduce((best, s) => (haversineKm(p, s) < haversineKm(p, best) ? s : best), list[0]);
+// Length of an open path that begins at `from` and visits `order` in turn.
+export function pathKm(order, from) {
+  let km = 0, p = from;
+  for (const s of order) { if (p) km += haversineKm(p, s); p = s; }
+  return km;
+}
 
-// Order the cities inside one time zone. The elves pick a plan per zone per year.
-export function orderBand(group, year, bandIndex, prevEnd) {
-  const rnd = mulberry32(hash32(year, bandIndex));
-  const strategy = STRATEGIES[Math.floor(rnd() * STRATEGIES.length)];
-  const g = group.slice();
-  if (strategy === 'north-south') return { strategy, order: g.sort((a, b) => b.lat - a.lat) };
-  if (strategy === 'south-north') return { strategy, order: g.sort((a, b) => a.lat - b.lat) };
-  if (strategy === 'east-west') return { strategy, order: g.sort((a, b) => b.lon - a.lon) };
-  const order = [];
-  let cur = prevEnd ? nearestTo(prevEnd, g) : g[Math.floor(rnd() * g.length)];
-  while (g.length) {
-    order.push(cur);
-    g.splice(g.indexOf(cur), 1);
-    if (g.length) cur = nearestTo(cur, g);
+// Nearest-neighbour tour from a fixed start.
+function nearestTour(start, cities) {
+  const rest = cities.filter(c => c !== start), out = [start];
+  let cur = start;
+  while (rest.length) {
+    let bi = 0, bd = Infinity;
+    rest.forEach((c, i) => { const d = haversineKm(cur, c); if (d < bd) { bd = d; bi = i; } });
+    cur = rest.splice(bi, 1)[0];
+    out.push(cur);
   }
-  return { strategy, order };
+  return out;
+}
+
+// 2-opt improvement of an open path whose first city is fixed and whose
+// entry leg comes from `from`. Removes crossings until no reversal helps.
+export function twoOpt(order, from) {
+  const n = order.length;
+  if (n < 3) return order.slice();
+  const o = order.slice();
+  const d = (a, b) => haversineKm(a, b);
+  let improved = true, guard = 0;
+  while (improved && guard++ < 200) {
+    improved = false;
+    for (let i = 1; i < n - 1; i++) {
+      for (let k = i + 1; k < n; k++) {
+        const a = o[i - 1], b = o[i], c = o[k], e = o[k + 1];
+        const before = d(a, b) + (e ? d(c, e) : 0);
+        const after = d(a, c) + (e ? d(b, e) : 0);
+        if (after < before - 1e-9) {
+          o.splice(i, k - i + 1, ...o.slice(i, k + 1).reverse());
+          improved = true;
+        }
+      }
+    }
+  }
+  if (from && n >= 2) { // also allow the whole path to start from its other end if that is shorter
+    const rev = o.slice().reverse();
+    if (pathKm(rev, from) < pathKm(o, from) - 1e-9) return rev;
+  }
+  return o;
+}
+
+export const PLAN_TOLERANCE = 1.06; // the elves accept any plan within 6 % of the best they found
+
+// Order the cities inside one time zone, efficiently. Candidates: nearest-
+// neighbour tours from the few cities closest to where Santa is coming from,
+// plus a couple of seeded alternative starts, each polished with 2-opt. The
+// year's seed picks among the candidates that are within PLAN_TOLERANCE of the
+// best, so every year is a different plan and every plan is a good one.
+export function orderBand(group, year, bandIndex, prevEnd) {
+  const from = prevEnd || POLE;
+  if (group.length === 1) return { order: group.slice(), km: haversineKm(from, group[0]), bestKm: haversineKm(from, group[0]) };
+  const rnd = mulberry32(hash32(year, bandIndex));
+  const byDist = group.slice().sort((a, b) => haversineKm(from, a) - haversineKm(from, b));
+  const starts = new Set(byDist.slice(0, Math.min(4, group.length)));
+  for (let i = 0; i < 3 && starts.size < group.length; i++) starts.add(group[Math.floor(rnd() * group.length)]);
+  const seen = new Set(), cands = [];
+  for (const s of starts) {
+    const order = twoOpt(nearestTour(s, group), from);
+    const key = order.map(c => c.name).join('>');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cands.push({ order, km: pathKm(order, from) });
+  }
+  cands.sort((a, b) => a.km - b.km);
+  const bestKm = cands[0].km;
+  const ok = cands.filter(c => c.km <= bestKm * PLAN_TOLERANCE);
+  const pick = ok[Math.floor(rnd() * ok.length)];
+  return { order: pick.order, km: pick.km, bestKm };
 }
 
 // Santa delivers at local midnight, so he sweeps westward one time zone per hour:
@@ -179,8 +236,8 @@ export function buildRoute(year, stops = stopsForYear(year)) {
   const plans = [];
   let prevEnd = null;
   offsets.forEach((utc, bi) => {
-    const { strategy, order } = orderBand(bands.get(utc), year, bi, prevEnd);
-    plans.push({ utc, strategy });
+    const { order, km: planKm, bestKm } = orderBand(bands.get(utc), year, bi, prevEnd);
+    plans.push({ utc, km: planKm, bestKm });
     const base = midnightUtc - utc * HOUR;
     const n = order.length;
     order.forEach((s, i) => timed.push({ ...s, t: base - 30 * MIN + (i + 0.5) * (60 * MIN / n) }));
@@ -206,7 +263,20 @@ export function buildRoute(year, stops = stopsForYear(year)) {
     w.cumPresents = presents;
     w.localArrive = w.arrive + w.utc * HOUR; // ms "as if UTC" — format with getUTC*
   });
-  return { year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length, plans, changes: routeChanges(year) };
+  const planKm = plans.reduce((a, p) => a + p.km, 0), bestKm = plans.reduce((a, p) => a + p.bestKm, 0);
+  return {
+    year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length, plans,
+    efficiency: bestKm / planKm, // 1.0 = every zone flown on the best plan the elves found
+    changes: routeChanges(year),
+  };
+}
+
+// Initial bearing from a to b, degrees clockwise from north.
+export function bearing(a, b) {
+  const la1 = rad(a.lat), la2 = rad(b.lat), dl = rad(b.lon - a.lon);
+  const y = Math.sin(dl) * Math.cos(la2);
+  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dl);
+  return (deg(Math.atan2(y, x)) + 360) % 360;
 }
 
 // ---------- state at an instant ----------

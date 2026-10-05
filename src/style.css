@@ -65,12 +65,26 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 .linkish { background: none; border: 0; padding: 0; color: var(--gold); text-decoration: underline; cursor: pointer; }
 
 .mapcard { padding: 10px; }
+.views { display: flex; gap: 6px; padding: 0 2px 8px; flex-wrap: wrap; }
+.chip { background: var(--card-2); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: .9rem; }
+.chip.is-on { color: var(--text); border-color: var(--gold); background: #1d2742; }
+#pov { display: block; width: 100%; height: auto; border-radius: 8px; background: #05080f; }
+.space { fill: #05080f; }
+.pov-land { fill: var(--land); stroke: var(--land-edge); stroke-width: .6; }
+.pov-grat { fill: none; stroke: #fff; stroke-opacity: .06; stroke-width: .7; }
+.pov .stop { r: 3.2; }
+.pov .stop.next { r: 4.6; }
+.pov .pole text { font-size: 16px; }
+.heading { fill: var(--gold); }
+.heading-line { stroke: var(--gold); stroke-width: 2; }
+.pov-n { font-size: 11px; fill: var(--muted); font-family: var(--mono); }
+.pov-caption { font-size: 13px; fill: #e6ecf5; paint-order: stroke; stroke: #05080f; stroke-width: 3px; stroke-linejoin: round; }
 #map { display: block; width: 100%; height: auto; border-radius: 8px; background: var(--ocean); }
 .ocean { fill: var(--ocean); }
 .land path { fill: var(--land); stroke: var(--land-edge); stroke-width: .6; }
 .graticule line { stroke: #ffffff; stroke-opacity: .05; stroke-width: .7; }
 .night { fill: #000; fill-opacity: .42; pointer-events: none; }
-.midnight { stroke: var(--gold); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 4; }
+.midnight { fill: none; stroke: var(--gold); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 4; }
 .route-future { fill: none; stroke: #ffffff; stroke-opacity: .22; stroke-width: 1; stroke-dasharray: 3 4; }
 .route-past { fill: none; stroke: var(--gold); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
 .stop { fill: #ffffff; fill-opacity: .35; stroke: none; r: 2.3; }

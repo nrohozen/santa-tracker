@@ -81,12 +81,26 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 .linkish { background: none; border: 0; padding: 0; color: var(--gold); text-decoration: underline; cursor: pointer; }
 
 .mapcard { padding: 10px; }
+.views { display: flex; gap: 6px; padding: 0 2px 8px; flex-wrap: wrap; }
+.chip { background: var(--card-2); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: .9rem; }
+.chip.is-on { color: var(--text); border-color: var(--gold); background: #1d2742; }
+#pov { display: block; width: 100%; height: auto; border-radius: 8px; background: #05080f; }
+.space { fill: #05080f; }
+.pov-land { fill: var(--land); stroke: var(--land-edge); stroke-width: .6; }
+.pov-grat { fill: none; stroke: #fff; stroke-opacity: .06; stroke-width: .7; }
+.pov .stop { r: 3.2; }
+.pov .stop.next { r: 4.6; }
+.pov .pole text { font-size: 16px; }
+.heading { fill: var(--gold); }
+.heading-line { stroke: var(--gold); stroke-width: 2; }
+.pov-n { font-size: 11px; fill: var(--muted); font-family: var(--mono); }
+.pov-caption { font-size: 13px; fill: #e6ecf5; paint-order: stroke; stroke: #05080f; stroke-width: 3px; stroke-linejoin: round; }
 #map { display: block; width: 100%; height: auto; border-radius: 8px; background: var(--ocean); }
 .ocean { fill: var(--ocean); }
 .land path { fill: var(--land); stroke: var(--land-edge); stroke-width: .6; }
 .graticule line { stroke: #ffffff; stroke-opacity: .05; stroke-width: .7; }
 .night { fill: #000; fill-opacity: .42; pointer-events: none; }
-.midnight { stroke: var(--gold); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 4; }
+.midnight { fill: none; stroke: var(--gold); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 4; }
 .route-future { fill: none; stroke: #ffffff; stroke-opacity: .22; stroke-width: 1; stroke-dasharray: 3 4; }
 .route-past { fill: none; stroke: var(--gold); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
 .stop { fill: #ffffff; fill-opacity: .35; stroke: none; r: 2.3; }
@@ -196,6 +210,32 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
   </section>
 
   <section class="card mapcard">
+    <div class="views" role="group" aria-label="Point of view">
+      <button id="view-map" class="chip is-on" aria-pressed="true" title="The whole world, from the North Pole's operations room">🗺 Mission control</button>
+      <button id="view-pov" class="chip" aria-pressed="false" title="The globe from the sleigh: Santa stays in the middle, the world turns under him">🛷 Santa's view</button>
+    </div>
+    <svg id="pov" class="pov" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The globe as seen from Santa's sleigh, with the night side, the route and the next stop" hidden>
+      <defs><clipPath id="pov-clip"><circle cx="500" cy="250" r="560"/></clipPath></defs>
+      <rect class="space" x="0" y="0" width="1000" height="500"/>
+      <g clip-path="url(#pov-clip)">
+        <circle class="ocean" cx="500" cy="250" r="560"/>
+        <path id="pov-land" class="pov-land"/>
+        <path id="pov-grat" class="pov-grat"/>
+        <path id="pov-night" class="night" fill-rule="evenodd"/>
+        <path id="pov-midnight" class="midnight"/>
+        <path id="pov-future" class="route-future"/>
+        <path id="pov-past" class="route-past"/>
+        <g id="pov-stops"/>
+        <g id="pov-home" class="pole" visibility="hidden"><text text-anchor="middle" dy=".36em">🏠</text></g>
+      </g>
+      <g id="pov-sleigh" class="sleigh" transform="translate(500 250)">
+        <g id="pov-heading" visibility="hidden"><path class="heading" d="M0 -52 L9 -34 L-9 -34 Z"/><line class="heading-line" x1="0" y1="-34" x2="0" y2="-20"/></g>
+        <circle class="sleigh-halo" r="22" fill="url(#halo)"/><text class="sleigh-icon" text-anchor="middle" dy=".36em">🎅</text>
+      </g>
+      <text class="pov-n" x="500" y="20" text-anchor="middle">N</text>
+      <text id="pov-coords" class="pov-caption mono" x="984" y="24" text-anchor="end"></text>
+      <text id="pov-caption" class="pov-caption" x="16" y="484"></text>
+    </svg>
     <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map showing Santa's position, his route, and the night side of Earth">
       <defs>
         <clipPath id="clip"><rect x="0" y="0" width="1000" height="500"/></clipPath>
@@ -273,7 +313,7 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 
   <section class="card archive" aria-labelledby="archive-h">
     <h2 id="archive-h">Flight archive</h2>
-    <p class="archive-intro">Every route from the last ten Christmases. Santa never flies the same scribble twice: the elves draw a new plan for each time zone every year, and whenever a country moves its clocks, his order of business moves with it. Pick a year to replay it.</p>
+    <p class="archive-intro">Every route from the last ten Christmases, each one out of the Workshop and back. Santa never flies the same route twice, but he is all about efficiency: the elves draw a fresh plan for each time zone every year from the handful of tightest plans they can find, and whenever a country moves its clocks, his order of business moves with it. Pick a year to replay it.</p>
     <div class="years" id="years"></div>
     <p class="hint" id="year-notes"></p>
   </section>
@@ -281,9 +321,11 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
   <details class="card how">
     <summary>How this works</summary>
     <div class="how-body">
-      <p><strong>The route.</strong> Santa delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour in the order of that year's plan, with at most six minutes per city. Between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>The route.</strong> Santa leaves the Workshop at the North Pole and delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour, with at most six minutes per city, and between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>Santa is all about efficiency.</strong> The order inside each zone is a travelling-salesman plan: nearest-neighbour tours starting from the cities closest to where the sleigh is coming from, polished with 2-opt until no two legs cross. The elves accept any plan within 6&nbsp;% of the best one they found, and the year's seed picks among those, so every Christmas is a different route and every route is a tight one. Each year's card shows how close it came to the best plan.</p>
+      <p><strong>Two views.</strong> <em>Mission control</em> is the whole world from the Workshop's operations room. <em>Santa's view</em> is the globe from the sleigh: he stays in the middle with north up, the world turns under him, the arrow is his heading to the next stop, and the night side and the solar-midnight line are drawn on the sphere.</p>
       <p><strong>Every country.</strong> <span id="how-countries"></span></p>
-      <p><strong>The archive.</strong> Each year's plan is seeded by the year, so 2019 looks the same for everyone, forever. On top of that the stop list carries real history: Samoa (2021) and Fiji (2022) stopped observing summer time, Brazil abolished it in 2019, Tonga tried it exactly once in 2016, Morocco went to permanent UTC+1 in late 2018, Sudan and South Sudan each moved their clocks back an hour, Jordan and Syria stopped changing theirs in 2022, Greenland moved to UTC−2 in 2023, and Kazakhstan unified on UTC+5 in 2024. In each case the city's midnight moved, so its place in the route moved too. The night shading for a past year is that year's real sun.</p>
+      <p><strong>The archive.</strong> Each year's plan is seeded by the year, so 2019 looks the same for everyone, forever, and every year starts and ends at the Workshop. On top of that the stop list carries real history: Samoa (2021) and Fiji (2022) stopped observing summer time, Brazil abolished it in 2019, Tonga tried it exactly once in 2016, Morocco went to permanent UTC+1 in late 2018, Sudan and South Sudan each moved their clocks back an hour, Jordan and Syria stopped changing theirs in 2022, Greenland moved to UTC−2 in 2023, and Kazakhstan unified on UTC+5 in 2024. In each case the city's midnight moved, so its place in the route moved too. The night shading for a past year is that year's real sun.</p>
       <p><strong>The shading is real.</strong> The dark side of the map is computed from the actual position of the sun for the instant on the clock (its declination and the subsolar point), so in December the whole Arctic is in polar night. The dashed line is solar midnight. Santa stays within a couple of hours of it all night, and the gap you see is the difference between the sun and the time zones people actually chose.</p>
       <p><strong>Preview mode</strong> is the same code with a simulated clock. Nothing else changes, so what you see in the preview is exactly what the live tracker will show on the night. A <code>?t=</code> parameter in the address deep-links any instant.</p>
       <p><strong>The numbers.</strong> Presents are a quarter of each metro population. Altitude, cookies and the lead reindeer are derived from the clock, so they are the same for everyone looking at the same moment. The rest is theatre.</p>
@@ -743,25 +785,82 @@ function mulberry32(seed) {
   };
 }
 
-const STRATEGIES = ['nearest', 'north-south', 'nearest', 'south-north', 'east-west', 'nearest'];
-const nearestTo = (p, list) => list.reduce((best, s) => (haversineKm(p, s) < haversineKm(p, best) ? s : best), list[0]);
+// Length of an open path that begins at `from` and visits `order` in turn.
+function pathKm(order, from) {
+  let km = 0, p = from;
+  for (const s of order) { if (p) km += haversineKm(p, s); p = s; }
+  return km;
+}
 
-// Order the cities inside one time zone. The elves pick a plan per zone per year.
-function orderBand(group, year, bandIndex, prevEnd) {
-  const rnd = mulberry32(hash32(year, bandIndex));
-  const strategy = STRATEGIES[Math.floor(rnd() * STRATEGIES.length)];
-  const g = group.slice();
-  if (strategy === 'north-south') return { strategy, order: g.sort((a, b) => b.lat - a.lat) };
-  if (strategy === 'south-north') return { strategy, order: g.sort((a, b) => a.lat - b.lat) };
-  if (strategy === 'east-west') return { strategy, order: g.sort((a, b) => b.lon - a.lon) };
-  const order = [];
-  let cur = prevEnd ? nearestTo(prevEnd, g) : g[Math.floor(rnd() * g.length)];
-  while (g.length) {
-    order.push(cur);
-    g.splice(g.indexOf(cur), 1);
-    if (g.length) cur = nearestTo(cur, g);
+// Nearest-neighbour tour from a fixed start.
+function nearestTour(start, cities) {
+  const rest = cities.filter(c => c !== start), out = [start];
+  let cur = start;
+  while (rest.length) {
+    let bi = 0, bd = Infinity;
+    rest.forEach((c, i) => { const d = haversineKm(cur, c); if (d < bd) { bd = d; bi = i; } });
+    cur = rest.splice(bi, 1)[0];
+    out.push(cur);
   }
-  return { strategy, order };
+  return out;
+}
+
+// 2-opt improvement of an open path whose first city is fixed and whose
+// entry leg comes from `from`. Removes crossings until no reversal helps.
+function twoOpt(order, from) {
+  const n = order.length;
+  if (n < 3) return order.slice();
+  const o = order.slice();
+  const d = (a, b) => haversineKm(a, b);
+  let improved = true, guard = 0;
+  while (improved && guard++ < 200) {
+    improved = false;
+    for (let i = 1; i < n - 1; i++) {
+      for (let k = i + 1; k < n; k++) {
+        const a = o[i - 1], b = o[i], c = o[k], e = o[k + 1];
+        const before = d(a, b) + (e ? d(c, e) : 0);
+        const after = d(a, c) + (e ? d(b, e) : 0);
+        if (after < before - 1e-9) {
+          o.splice(i, k - i + 1, ...o.slice(i, k + 1).reverse());
+          improved = true;
+        }
+      }
+    }
+  }
+  if (from && n >= 2) { // also allow the whole path to start from its other end if that is shorter
+    const rev = o.slice().reverse();
+    if (pathKm(rev, from) < pathKm(o, from) - 1e-9) return rev;
+  }
+  return o;
+}
+
+const PLAN_TOLERANCE = 1.06; // the elves accept any plan within 6 % of the best they found
+
+// Order the cities inside one time zone, efficiently. Candidates: nearest-
+// neighbour tours from the few cities closest to where Santa is coming from,
+// plus a couple of seeded alternative starts, each polished with 2-opt. The
+// year's seed picks among the candidates that are within PLAN_TOLERANCE of the
+// best, so every year is a different plan and every plan is a good one.
+function orderBand(group, year, bandIndex, prevEnd) {
+  const from = prevEnd || POLE;
+  if (group.length === 1) return { order: group.slice(), km: haversineKm(from, group[0]), bestKm: haversineKm(from, group[0]) };
+  const rnd = mulberry32(hash32(year, bandIndex));
+  const byDist = group.slice().sort((a, b) => haversineKm(from, a) - haversineKm(from, b));
+  const starts = new Set(byDist.slice(0, Math.min(4, group.length)));
+  for (let i = 0; i < 3 && starts.size < group.length; i++) starts.add(group[Math.floor(rnd() * group.length)]);
+  const seen = new Set(), cands = [];
+  for (const s of starts) {
+    const order = twoOpt(nearestTour(s, group), from);
+    const key = order.map(c => c.name).join('>');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cands.push({ order, km: pathKm(order, from) });
+  }
+  cands.sort((a, b) => a.km - b.km);
+  const bestKm = cands[0].km;
+  const ok = cands.filter(c => c.km <= bestKm * PLAN_TOLERANCE);
+  const pick = ok[Math.floor(rnd() * ok.length)];
+  return { order: pick.order, km: pick.km, bestKm };
 }
 
 // Santa delivers at local midnight, so he sweeps westward one time zone per hour:
@@ -779,8 +878,8 @@ function buildRoute(year, stops = stopsForYear(year)) {
   const plans = [];
   let prevEnd = null;
   offsets.forEach((utc, bi) => {
-    const { strategy, order } = orderBand(bands.get(utc), year, bi, prevEnd);
-    plans.push({ utc, strategy });
+    const { order, km: planKm, bestKm } = orderBand(bands.get(utc), year, bi, prevEnd);
+    plans.push({ utc, km: planKm, bestKm });
     const base = midnightUtc - utc * HOUR;
     const n = order.length;
     order.forEach((s, i) => timed.push({ ...s, t: base - 30 * MIN + (i + 0.5) * (60 * MIN / n) }));
@@ -806,7 +905,20 @@ function buildRoute(year, stops = stopsForYear(year)) {
     w.cumPresents = presents;
     w.localArrive = w.arrive + w.utc * HOUR; // ms "as if UTC" — format with getUTC*
   });
-  return { year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length, plans, changes: routeChanges(year) };
+  const planKm = plans.reduce((a, p) => a + p.km, 0), bestKm = plans.reduce((a, p) => a + p.bestKm, 0);
+  return {
+    year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length, plans,
+    efficiency: bestKm / planKm, // 1.0 = every zone flown on the best plan the elves found
+    changes: routeChanges(year),
+  };
+}
+
+// Initial bearing from a to b, degrees clockwise from north.
+function bearing(a, b) {
+  const la1 = rad(a.lat), la2 = rad(b.lat), dl = rad(b.lon - a.lon);
+  const y = Math.sin(dl) * Math.cos(la2);
+  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dl);
+  return (deg(Math.atan2(y, x)) + 360) % 360;
 }
 
 // ---------- state at an instant ----------
@@ -946,6 +1058,61 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
   const px = p => [(p.lon + 180) / 360 * W, (90 - p.lat) / 180 * H];
   const SVG = 'http://www.w3.org/2000/svg';
   const el = (tag, attrs = {}) => { const n = document.createElementNS(SVG, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  const rad = d => d * Math.PI / 180;
+
+  // ---------- Santa's view: an orthographic globe centred on the sleigh, north up ----------
+  const PR = 560, PCX = 500, PCY = 250; // globe radius and centre inside the 1000×500 box
+  function ortho(c, p) {
+    const la = rad(p.lat), lo = rad(p.lon - c.lon), la0 = rad(c.lat);
+    const x = Math.cos(la) * Math.sin(lo);
+    const y = Math.cos(la0) * Math.sin(la) - Math.sin(la0) * Math.cos(la) * Math.cos(lo);
+    const z = Math.sin(la0) * Math.sin(la) + Math.cos(la0) * Math.cos(la) * Math.cos(lo);
+    return { x: PCX + PR * x, y: PCY - PR * y, vis: z > 0 };
+  }
+  const clampRim = q => { const dx = q.x - PCX, dy = q.y - PCY, L = Math.hypot(dx, dy) || 1; return { x: PCX + dx / L * PR, y: PCY + dy / L * PR }; };
+  const pt = q => q.x.toFixed(1) + ' ' + q.y.toFixed(1);
+  // Polygons as rings of [lon, lat]. Hidden vertices are pushed to the horizon so partly visible shapes still fill.
+  function orthoRings(c, polys) {
+    let d = '';
+    for (const poly of polys) for (const ring of poly) {
+      let any = false, s = '';
+      ring.forEach(([lon, lat], i) => { const q = ortho(c, { lat, lon }); any = any || q.vis; s += (i ? 'L' : 'M') + pt(q.vis ? q : clampRim(q)); });
+      if (any) d += s + 'Z';
+    }
+    return d;
+  }
+  function orthoLine(c, pts) {
+    let d = '', pen = false;
+    for (const p of pts) { const q = ortho(c, p); if (!q.vis) { pen = false; continue; } d += (pen ? 'L' : 'M') + pt(q); pen = true; }
+    return d;
+  }
+  const toVec = p => { const la = rad(p.lat), lo = rad(p.lon); return [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)]; };
+  const fromVec = ([x, y, z]) => ({ lat: Math.atan2(z, Math.hypot(x, y)) * 180 / Math.PI, lon: Math.atan2(y, x) * 180 / Math.PI });
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = a => { const L = Math.hypot(...a); return [a[0] / L, a[1] / L, a[2] / L]; };
+  // The night side as seen from c. The terminator is the great circle 90° from the sun; with hidden
+  // vertices clamped to the horizon, the polygon is the visible night when the night's centre is in
+  // view and the visible day otherwise, in which case we take the complement (evenodd with the disk).
+  function orthoNight(c, sun) {
+    const S = toVec(sun);
+    let u = cross(S, [0, 0, 1]); u = Math.hypot(...u) < 1e-6 ? [1, 0, 0] : norm(u);
+    const v = cross(S, u);
+    let d = '';
+    for (let a = 0; a <= 360; a += 2) {
+      const r = rad(a), p = fromVec([Math.cos(r) * u[0] + Math.sin(r) * v[0], Math.cos(r) * u[1] + Math.sin(r) * v[1], Math.cos(r) * u[2] + Math.sin(r) * v[2]]);
+      const q = ortho(c, p); d += (a ? 'L' : 'M') + pt(q.vis ? q : clampRim(q));
+    }
+    d += 'Z';
+    const anti = { lat: -sun.lat, lon: wrapLon(sun.lon + 180) };
+    if (!ortho(c, anti).vis) d += `M${PCX - PR} ${PCY}a${PR} ${PR} 0 1 0 ${2 * PR} 0a${PR} ${PR} 0 1 0 ${-2 * PR} 0Z`;
+    return d;
+  }
+  const graticuleLines = (() => {
+    const lines = [];
+    for (let lon = -180; lon < 180; lon += 30) { const l = []; for (let lat = -90; lat <= 90; lat += 5) l.push({ lat, lon }); lines.push(l); }
+    for (let lat = -60; lat <= 60; lat += 30) { const l = []; for (let lon = -180; lon <= 180; lon += 5) l.push({ lat, lon }); lines.push(l); }
+    return lines;
+  })();
 
   // ---------- years + routes ----------
   const currentYear = missionYear(new Date());
@@ -976,7 +1143,8 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
     return d;
   };
 
-  $('land').appendChild(el('path', { id: 'land-path', d: ringsToPath(decodeTopo(LAND_TOPO, 'land')), 'fill-rule': 'evenodd' }));
+  const landPolys = decodeTopo(LAND_TOPO, 'land');
+  $('land').appendChild(el('path', { id: 'land-path', d: ringsToPath(landPolys), 'fill-rule': 'evenodd' }));
   const grat = $('graticule');
   for (let lon = -150; lon <= 150; lon += 30) grat.appendChild(el('line', { x1: px({ lat: 0, lon })[0], x2: px({ lat: 0, lon })[0], y1: 0, y2: H }));
   for (let lat = -60; lat <= 60; lat += 30) grat.appendChild(el('line', { y1: px({ lat, lon: 0 })[1], y2: px({ lat, lon: 0 })[1], x1: 0, x2: W }));
@@ -994,19 +1162,24 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
   };
 
   // ---------- per-route DOM (stops, future track, labels) ----------
-  const stopEls = [];
+  const stopEls = [], povStopEls = [];
+  let fullTrack = [];
   function applyRouteDom() {
     const g = $('stops'); g.textContent = ''; stopEls.length = 0;
+    const pg = $('pov-stops'); pg.textContent = ''; povStopEls.length = 0;
     for (const w of route.waypoints) {
       if (w.pole) continue;
       const [cx, cy] = px(w);
+      const label = `${w.name}, ${w.country} (${fmtOffset(w.utc)}) · arrives ${localStamp(w)} (${fmtClockUtc(w.arrive)} UTC) · ${big(w.presents)} presents`;
       const c = el('circle', { cx: cx.toFixed(1), cy: cy.toFixed(1), class: 'stop' });
-      const title = el('title');
-      title.textContent = `${w.name}, ${w.country} (${fmtOffset(w.utc)}) · arrives ${localStamp(w)} (${fmtClockUtc(w.arrive)} UTC) · ${big(w.presents)} presents`;
-      c.appendChild(title);
+      const title = el('title'); title.textContent = label; c.appendChild(title);
       g.appendChild(c); stopEls.push([w, c]);
+      const pc = el('circle', { class: 'stop', visibility: 'hidden' });
+      const pTitle = el('title'); pTitle.textContent = label; pc.appendChild(pTitle);
+      pg.appendChild(pc); povStopEls.push([w, pc]);
     }
-    $('route-future').setAttribute('d', polyline(track(route, route.launch, route.home)));
+    fullTrack = track(route, route.launch, route.home);
+    $('route-future').setAttribute('d', polyline(fullTrack));
     $('scrub').min = route.launch; $('scrub').max = route.home; $('scrub').value = route.launch;
     $('scrub-min').textContent = `Launch · ${utcStamp(route.launch)}`;
     $('scrub-max').textContent = `Home · ${utcStamp(route.home)}`;
@@ -1038,7 +1211,7 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
     svg.appendChild(el('path', { class: 'mini-route', d: polyline(track(r, r.launch, r.home, 3 * MIN)) }));
     const label = document.createElement('span'); label.className = 'year-label'; label.textContent = y === currentYear ? `${y} · this year` : String(y);
     const meta = document.createElement('span'); meta.className = 'year-meta';
-    meta.textContent = `${r.stopCount} stops · ${fmtInt(r.totalKm)} km${r.changes.length ? ` · ${r.changes.length} clock change${r.changes.length > 1 ? 's' : ''}` : ''}`;
+    meta.textContent = `${r.stopCount} stops · ${fmtInt(r.totalKm)} km · ${(r.efficiency * 100).toFixed(1)}% of best plan${r.changes.length ? ` · ${r.changes.length} clock change${r.changes.length > 1 ? 's' : ''}` : ''}`;
     b.append(svg, label, meta);
     b.onclick = () => { setYear(y); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     yearsEl.appendChild(b);
@@ -1056,6 +1229,7 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
   let playing = false;
   let speed = 600; // simulated seconds per real second
   let lastTs = null, lastLiveRender = 0, lastLogKey = '';
+  let view = 'map', lastT = null;
 
   const clamp = t => Math.min(route.home, Math.max(route.launch, t));
   const nowOnChristmasEve = () => {
@@ -1146,17 +1320,9 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
       $('hint').hidden = true;
     }
 
-    // map
-    $('night').setAttribute('d', polyline(nightPolygon(s.sun)) + 'Z');
-    const mx = px({ lat: 0, lon: s.midnightLon })[0];
-    $('midnight').setAttribute('x1', mx); $('midnight').setAttribute('x2', mx);
-    $('route-past').setAttribute('d', s.phase === 'flight' ? polyline(track(route, route.launch, t)) : '');
-    const [sx, sy] = px(s);
-    $('sleigh').setAttribute('transform', `translate(${sx.toFixed(1)} ${Math.max(16, sy).toFixed(1)})`);
-    for (const [w, c] of stopEls) {
-      c.classList.toggle('done', w.depart <= t || s.phase === 'done');
-      c.classList.toggle('next', s.phase === 'flight' && s.next === w);
-    }
+    // map or Santa's view
+    lastT = t;
+    if (view === 'pov') renderPov(s, t, tel); else renderMap(s, t);
 
     // tiles
     $('t-presents').textContent = big(s.presents);
@@ -1214,6 +1380,62 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
     }
   }
 
+  function renderMap(s, t) {
+    $('night').setAttribute('d', polyline(nightPolygon(s.sun)) + 'Z');
+    const mx = px({ lat: 0, lon: s.midnightLon })[0];
+    $('midnight').setAttribute('x1', mx); $('midnight').setAttribute('x2', mx);
+    $('route-past').setAttribute('d', s.phase === 'flight' ? polyline(track(route, route.launch, t)) : '');
+    const [sx, sy] = px(s);
+    $('sleigh').setAttribute('transform', `translate(${sx.toFixed(1)} ${Math.max(16, sy).toFixed(1)})`);
+    for (const [w, c] of stopEls) {
+      c.classList.toggle('done', w.depart <= t || s.phase === 'done');
+      c.classList.toggle('next', s.phase === 'flight' && s.next === w);
+    }
+  }
+
+  function renderPov(s, t, tel) {
+    const c = { lat: s.lat, lon: s.lat > 89.99 ? 0 : s.lon };
+    $('pov-land').setAttribute('d', orthoRings(c, landPolys));
+    $('pov-grat').setAttribute('d', graticuleLines.map(l => orthoLine(c, l)).join(''));
+    $('pov-night').setAttribute('d', orthoNight(c, s.sun));
+    const mer = []; for (let lat = -90; lat <= 90; lat += 3) mer.push({ lat, lon: s.midnightLon });
+    $('pov-midnight').setAttribute('d', orthoLine(c, mer));
+    $('pov-future').setAttribute('d', orthoLine(c, fullTrack));
+    $('pov-past').setAttribute('d', s.phase === 'flight' ? orthoLine(c, track(route, route.launch, t)) : '');
+    const home = ortho(c, { lat: 89.5, lon: c.lon }); // the Workshop sits on the pole; show it when it is over the horizon
+    $('pov-home').setAttribute('visibility', home.vis ? 'visible' : 'hidden');
+    $('pov-home').setAttribute('transform', `translate(${home.x.toFixed(1)} ${home.y.toFixed(1)})`);
+    for (const [w, ce] of povStopEls) {
+      const q = ortho(c, w);
+      ce.setAttribute('visibility', q.vis ? 'visible' : 'hidden');
+      if (q.vis) { ce.setAttribute('cx', q.x.toFixed(1)); ce.setAttribute('cy', q.y.toFixed(1)); }
+      ce.classList.toggle('done', w.depart <= t || s.phase === 'done');
+      ce.classList.toggle('next', s.phase === 'flight' && s.next === w);
+    }
+    const hdg = s.next ? bearing(s, s.next) : 0;
+    const flying = s.phase === 'flight' && s.status === 'enroute';
+    $('pov-heading').setAttribute('transform', `rotate(${hdg.toFixed(0)})`);
+    $('pov-heading').setAttribute('visibility', flying ? 'visible' : 'hidden');
+    const nextName = s.next ? (s.next.pole ? 'the Workshop' : s.next.name) : '';
+    const nextKm = s.next ? `${fmtInt(haversineKm(s, s.next))} km` : '';
+    let cap;
+    if (s.phase === 'pre') cap = `Over the Workshop · ${fmtDuration(s.untilLaunchMs)} to launch · first stop ${s.next.name}, ${nextKm} due south`;
+    else if (s.phase === 'done') cap = 'Home. Looking down at the Workshop; the lights are off.';
+    else if (s.status === 'delivering') cap = `On the rooftops of ${s.at.name} · next ${nextName}, ${nextKm}, bearing ${hdg.toFixed(0)}°`;
+    else cap = `Heading ${hdg.toFixed(0)}° at ${fmtInt(tel.altitudeM)} m · ${nextName} ${nextKm} ahead · ${fmtInt(s.speedKmh)} km/h`;
+    $('pov-caption').textContent = cap;
+    $('pov-coords').textContent = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
+  }
+
+  function setView(v) {
+    view = v;
+    $('map').hidden = v !== 'map'; $('pov').hidden = v !== 'pov';
+    $('view-map').classList.toggle('is-on', v === 'map'); $('view-map').setAttribute('aria-pressed', String(v === 'map'));
+    $('view-pov').classList.toggle('is-on', v === 'pov'); $('view-pov').setAttribute('aria-pressed', String(v === 'pov'));
+    try { localStorage.setItem('santa_view', v); } catch { /* private window etc. */ }
+    if (lastT != null) render(lastT);
+  }
+
   // ---------- loop ----------
   function frame(ts) {
     if (lastTs == null) lastTs = ts;
@@ -1233,6 +1455,8 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
   }
 
   // ---------- wiring ----------
+  $('view-map').onclick = () => setView('map');
+  $('view-pov').onclick = () => setView('pov');
   $('mode-live').onclick = () => setMode('live');
   $('mode-preview').onclick = () => setMode('preview');
   $('hint-preview').onclick = () => setMode('preview');
@@ -1255,6 +1479,9 @@ const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
   const params = new URLSearchParams(location.search);
   const tParam = params.get('t') ? Date.parse(params.get('t')) : NaN;
   const yParam = params.get('y') ? parseInt(params.get('y'), 10) : NaN;
+  let savedView = null; try { savedView = localStorage.getItem('santa_view'); } catch { /* ignore */ }
+  const wantView = params.get('view') || savedView;
+  if (wantView === 'pov') { view = 'pov'; $('map').hidden = true; $('pov').hidden = false; $('view-map').classList.remove('is-on'); $('view-pov').classList.add('is-on'); $('view-pov').setAttribute('aria-pressed', 'true'); $('view-map').setAttribute('aria-pressed', 'false'); }
   if (!Number.isNaN(tParam)) { applyYear(new Date(tParam).getUTCFullYear()); setMode('preview', tParam); }
   else if (!Number.isNaN(yParam) && yParam !== currentYear) { setYear(yParam); }
   else { applyYear(currentYear); setMode(params.get('mode') === 'preview' ? 'preview' : 'live'); }

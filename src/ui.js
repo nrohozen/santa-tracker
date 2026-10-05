@@ -482,7 +482,7 @@
     let cap;
     if (s.phase === 'pre') cap = `Parked at the loading bay, nose toward ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)} · drag to look around`;
     else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off, cookies under audit.';
-    else if (s.status === 'delivering') cap = `On the rooftops of ${s.at.name} · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km, bearing ${hdg.toFixed(0)}°`;
+    else if (s.status === 'delivering') cap = `Over the rooftops of ${s.at.name} · ${big(s.at.presents)} presents · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km, bearing ${hdg.toFixed(0)}°`;
     else cap = `Heading ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h · ${nextName} ${fmtInt(haversineKm(s, s.next))} km ahead · ${fmtDuration(s.etaMs)}`;
     $('pov-caption').textContent = cap;
     $('pov-coords').textContent = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
@@ -537,6 +537,27 @@
       simT = clamp(simT + (e.code === 'ArrowRight' ? 10 : -10) * MIN); render(simT); syncUrl();
     }
   });
+
+  // ---------- snow ----------
+  (() => {
+    const cv = $('snow'); if (!cv) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let on = !reduce; try { if (localStorage.getItem('santa_snow') === 'off') on = false; } catch { /* ignore */ }
+    const btn = $('snow-toggle');
+    const g = cv.getContext('2d'); let flakes = [], w = 0, h = 0, raf = 0;
+    const size = () => { w = cv.width = innerWidth; h = cv.height = innerHeight; };
+    const seed = () => { flakes = Array.from({ length: Math.round(w / 18) }, () => ({ x: Math.random() * w, y: Math.random() * h, r: 1 + Math.random() * 2.2, v: 0.3 + Math.random() * 0.8, d: Math.random() * 2 * Math.PI })); };
+    const step = () => {
+      g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.85)';
+      for (const f of flakes) { f.y += f.v; f.d += 0.01; f.x += Math.sin(f.d) * 0.3; if (f.y > h + 4) { f.y = -4; f.x = Math.random() * w; } g.beginPath(); g.arc(f.x, f.y, f.r, 0, 2 * Math.PI); g.fill(); }
+      raf = requestAnimationFrame(step);
+    };
+    const apply = () => { cv.hidden = !on; if (btn) { btn.textContent = on ? '❄ snow: on' : '❄ snow: off'; btn.setAttribute('aria-pressed', String(on)); } cancelAnimationFrame(raf); if (on && !document.hidden) step(); else g.clearRect(0, 0, w, h); };
+    size(); seed(); addEventListener('resize', () => { size(); seed(); });
+    document.addEventListener('visibilitychange', apply);
+    if (btn) btn.onclick = () => { on = !on; try { localStorage.setItem('santa_snow', on ? 'on' : 'off'); } catch { /* ignore */ } apply(); };
+    apply();
+  })();
 
   const params = new URLSearchParams(location.search);
   const tParam = params.get('t') ? Date.parse(params.get('t')) : NaN;

@@ -18,6 +18,25 @@
 </style>
 </head>
 <body data-mode="live">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="sym-cane" viewBox="0 0 40 90">
+      <path d="M12 86 V30 a14 14 0 0 1 28 0 v6" fill="none" stroke="#f6f1e7" stroke-width="12" stroke-linecap="round"/>
+      <path d="M12 86 V30 a14 14 0 0 1 28 0 v6" fill="none" stroke="#e5484d" stroke-width="12" stroke-linecap="butt" stroke-dasharray="7 9"/>
+    </symbol>
+    <symbol id="sym-holly" viewBox="0 0 100 60">
+      <path d="M48 32 C40 10 20 6 4 14 C12 26 10 40 20 52 C30 44 42 44 48 32Z" fill="#2f9e5a"/>
+      <path d="M52 32 C60 10 80 6 96 14 C88 26 90 40 80 52 C70 44 58 44 52 32Z" fill="#2f9e5a"/>
+      <circle cx="44" cy="40" r="7" fill="#e5484d"/><circle cx="56" cy="42" r="7" fill="#e5484d"/><circle cx="50" cy="30" r="7" fill="#c73a3f"/>
+    </symbol>
+    <symbol id="sym-drop" viewBox="0 0 40 40">
+      <path d="M4 34 C4 14 12 4 20 4 C28 4 36 14 36 34 Z" fill="currentColor"/>
+      <path d="M12 28 C12 16 16 10 20 10" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
+      <g fill="#fff" fill-opacity=".7"><circle cx="14" cy="22" r="1.4"/><circle cx="24" cy="16" r="1.4"/><circle cx="28" cy="26" r="1.4"/><circle cx="19" cy="30" r="1.4"/></g>
+    </symbol>
+  </defs>
+</svg>
+<canvas id="snow" class="snow" aria-hidden="true"></canvas>
 <header class="top">
   <div class="brand"><a href="/">roho.foo</a><span class="sep">/</span><span>Santa Tracker</span><span class="badge" title="North Pole Logistics, internal tool. Mirrored here by an elf who should be wrapping.">ELF OPS · internal mirror</span></div>
   <div class="topright">
@@ -32,7 +51,17 @@
 <main>
   <p class="elfbar">You are looking at the elves' own tracker, not the one with the press office. Sleigh telemetry straight from the Workshop, with the dress rehearsal, the view from the sleigh, and ten years of past runs. <span class="muted">Mirrored to roho.foo by an elf who should be wrapping.</span></p>
 
-  <section class="card status">
+  <section class="card status deco-card">
+    <svg class="lights" viewBox="0 0 1000 44" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 6 Q125 40 250 10 T500 10 T750 10 T1000 8" fill="none" stroke="#2b3a26" stroke-width="2"/>
+      <g class="bulbs">
+        <circle cx="40" cy="20" r="6"/><circle cx="110" cy="31" r="6"/><circle cx="180" cy="30" r="6"/><circle cx="250" cy="14" r="6"/>
+        <circle cx="320" cy="29" r="6"/><circle cx="390" cy="31" r="6"/><circle cx="460" cy="16" r="6"/><circle cx="530" cy="28" r="6"/>
+        <circle cx="600" cy="31" r="6"/><circle cx="670" cy="17" r="6"/><circle cx="740" cy="27" r="6"/><circle cx="810" cy="31" r="6"/>
+        <circle cx="880" cy="18" r="6"/><circle cx="950" cy="26" r="6"/>
+      </g>
+    </svg>
+    <svg class="holly holly-tr" aria-hidden="true"><use href="#sym-holly"/></svg>
     <div class="status-row">
       <div>
         <div class="kicker" id="kicker">PRE-FLIGHT</div>
@@ -138,7 +167,9 @@
     <p class="hint">Space plays and pauses, arrow keys nudge ten minutes. Share this exact moment: <a id="permalink" href="#" class="mono">?t=…</a></p>
   </section>
 
-  <section class="card workshop" id="workshop" hidden aria-labelledby="ws-h">
+  <section class="card workshop gingerbread" id="workshop" hidden aria-labelledby="ws-h">
+    <svg class="cane cane-l" aria-hidden="true"><use href="#sym-cane"/></svg>
+    <svg class="cane cane-r" aria-hidden="true"><use href="#sym-cane"/></svg>
     <h2 id="ws-h">Workshop board</h2>
     <div class="ws-grid">
       <div>
@@ -183,6 +214,7 @@
   </section>
 
   <section class="card archive" aria-labelledby="archive-h">
+    <div class="drops" aria-hidden="true"><svg class="drop" style="color:#e5484d"><use href="#sym-drop"/></svg><svg class="drop" style="color:#3ddc84"><use href="#sym-drop"/></svg><svg class="drop" style="color:#f5c451"><use href="#sym-drop"/></svg><svg class="drop" style="color:#a66bff"><use href="#sym-drop"/></svg><svg class="drop" style="color:#5aa9ff"><use href="#sym-drop"/></svg></div>
     <h2 id="archive-h">Past runs</h2>
     <p class="archive-intro">Every run from the last ten Christmases, each one out of the Workshop and back. Santa never flies the same route twice, but he is all about efficiency: route planning draws a fresh plan for each time zone every year from the handful of tightest plans they can find, and whenever a country moves its clocks, the order of business moves with it. Pick a year to replay it.</p>
     <div class="years" id="years"></div>
@@ -208,7 +240,7 @@
 
 <footer class="foot">
   <span>North Pole Logistics, internal tool · mirrored to <a href="/">roho.foo</a> · © <span id="foot-year"></span> Nicholas Rohozen</span>
-  <span><a href="https://github.com/nrohozen/santa-tracker">source</a> · built for a quarterly "build it with AI" challenge</span>
+  <span><button id="snow-toggle" class="linkish" type="button" aria-pressed="true">❄ snow: on</button> · <a href="https://github.com/nrohozen/santa-tracker">source</a> · built for a quarterly "build it with AI" challenge</span>
 </footer>
 
 <script>

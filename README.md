@@ -9,7 +9,9 @@ runs. Live at **https://roho.foo/santa/**.
 
 ![Dress rehearsal, 01:10 UTC on Dec 25: Mission control with every delivered city lit, the sleigh over the Atlantic, the elf on duty and the dispatch log](docs/preview.png)
 
-![From the sleigh, in 3D: leaving Tokyo for Sapporo, Honshu and Hokkaido ahead, stars above the curved horizon, the reindeer in front](docs/santas-view.png)
+![From the sleigh, in 3D: over the rooftops of Tokyo, the lit skyline ahead, Sapporo labelled on the horizon](docs/santas-view.png)
+
+![Parked at the Workshop: the candy-striped pole, the gingerbread hall, gumdrops and candy canes under the stars](docs/workshop-3d.png)
 
 ![Pre-flight: the Workshop board with wrapping progress and the pre-flight checklist](docs/workshop.png)
 
@@ -40,8 +42,13 @@ runs. Live at **https://roho.foo/santa/**.
   shader with a warm band along the terminator, there is an atmosphere rim,
   a seeded starfield, the sun where it actually is, cities as lights with
   clamped point sizes, the dashed route ahead and the gold tail behind, the
-  Workshop at the pole, and the reindeer team in the foreground with Rudolph's
-  nose on. Drag to look around, scroll to climb, double-click to reset. When
+  Workshop at the pole (a candy-striped pole with a lamp, a gingerbread hall,
+  gumdrops and candy canes), toy-scale skylines for every city (a cluster of
+  lit boxes sized by population: gold once delivered, dim before, red for the
+  next stop; the camera swoops down behind the sleigh while Santa is on the
+  rooftops so the skyline fills the view), and the reindeer team in the
+  foreground with Rudolph's nose on. Drag to look around, scroll to climb,
+  double-click to reset. When
   WebGL is unavailable the same view falls back to an SVG perspective
   renderer (azimuthal projection around the nadir, Sutherland–Hodgman against
   the horizon circle, near-plane clip). The choice sticks (`localStorage`) and
@@ -76,6 +83,11 @@ runs. Live at **https://roho.foo/santa/**.
   list also carries real time-zone history (below), so when a country moved
   its clocks, its place in that year's route moved too. Past years render in
   the past tense with that year's real sun.
+- **Dressed for the season.** Candy-cane stripes on every card, a string of
+  twinkling lights and holly on the status card, gumdrop-glossy buttons,
+  peppermint progress bars, a gingerbread Workshop board with icing and
+  gumdrop checklist bullets, and gentle snowfall (an off switch lives in the
+  footer, and it stays off; it also respects reduced-motion).
 - **Self-contained and private.** One HTML file (about 790 KB, of which
   Three.js is 620 KB), no external requests after load, no analytics, no
   geolocation.

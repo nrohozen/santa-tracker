@@ -7,7 +7,7 @@ window.SantaGL = (() => {
   // lat/lon → Three.js coordinates that line up with an equirectangular texture on THREE.SphereGeometry
   const xyz = (lat, lon, r = 1) => { const la = lat * RAD, lo = lon * RAD; return new THREE.Vector3(r * Math.cos(la) * Math.cos(lo), r * Math.sin(la), -r * Math.cos(la) * Math.sin(lo)); };
 
-  let renderer, scene, camera, earth, atmo, stars, sunSprite, lights, nextLight, routeLine, tailLine, workshop;
+  let renderer, scene, camera, earth, atmo, stars, sunSprite, lights, nextLight, routeLine, tailLine, workshop, cities, cityIndex = [];
   let canvas, W = 1000, H = 500, route = null, fullTrack = [];
   let camPos = null, camTarget = null; // smoothed
   let last = null; // the last (state, time) drawn, so a resize or a drag can redraw while paused
@@ -52,6 +52,79 @@ window.SantaGL = (() => {
     const m = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: true });
     return new THREE.Sprite(m);
   };
+
+
+  // a building face: dark wall with a grid of lit windows (seeded so it never flickers)
+  function windowTexture(seed) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'); g.fillStyle = '#141c2c'; g.fillRect(0, 0, 64, 64);
+    const r = mulberry32(seed);
+    for (let y = 6; y < 60; y += 10) for (let x = 6; x < 60; x += 9) { if (r() < 0.62) { g.fillStyle = r() < 0.8 ? '#ffe9a8' : '#fff6d8'; g.fillRect(x, y, 5, 6); } }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; return t;
+  }
+  function stripeTexture(a, b, n = 8) {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const g = c.getContext('2d'); g.fillStyle = a; g.fillRect(0, 0, 64, 64); g.fillStyle = b;
+    for (let i = 0; i < n; i += 2) g.fillRect(0, i * 64 / n, 64, 64 / n);
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 6); t.colorSpace = THREE.NoColorSpace; return t;
+  }
+  // local frame at a point on the globe: returns a matrix placing a unit box (x east, y up, z south) there
+  function placeAt(lat, lon, up, east, north, offE, offN, w, h, d) {
+    const base = xyz(lat, lon).add(east.clone().multiplyScalar(offE)).add(north.clone().multiplyScalar(offN)).normalize();
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), base);
+    m.compose(base.clone().multiplyScalar(1 + h / 2), q, new THREE.Vector3(w, h, d));
+    return m;
+  }
+  const frameAt = (lat, lon) => { const up = xyz(lat, lon); let east = new THREE.Vector3(0, 1, 0).cross(up); east = east.length() < 1e-6 ? new THREE.Vector3(1, 0, 0) : east.normalize(); const north = up.clone().cross(east).normalize(); return { up, east, north }; };
+
+  // toy-scale skylines: a cluster of lit boxes per city, sized by population
+  function buildCities(stops) {
+    if (cities) { scene.remove(cities); cities.geometry.dispose(); }
+    const plan = [];
+    stops.forEach((w, si) => {
+      const r = mulberry32(hash32(si, 0xC17)), { up, east, north } = frameAt(w.lat, w.lon);
+      const scale = Math.log10(1 + w.pop); // 0 (village) … 1.6 (Tokyo)
+      const n = 5 + Math.round(10 * Math.min(1, scale));
+      for (let i = 0; i < n; i++) {
+        const ang = r() * 2 * Math.PI, rad = 0.0045 * Math.sqrt(r()) * (0.5 + scale / 2);
+        const h = (0.0015 + 0.011 * scale) * (0.35 + r() * 0.65) * (i === 0 ? 1.25 : 1);
+        const wdt = 0.0008 + r() * 0.0012;
+        plan.push({ si, m: placeAt(w.lat, w.lon, up, east, north, Math.sin(ang) * rad, Math.cos(ang) * rad, wdt, h, wdt) });
+      }
+    });
+    const wall = new THREE.MeshBasicMaterial({ map: windowTexture(0xB1D) });
+    const roof = new THREE.MeshBasicMaterial({ color: 0x1b2436 });
+    cities = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), [wall, wall, roof, roof, wall, wall], plan.length);
+    cityIndex = plan.map(b => b.si);
+    plan.forEach((b, i) => { cities.setMatrixAt(i, b.m); cities.setColorAt(i, TODO_CITY); });
+    cities.instanceMatrix.needsUpdate = true; cities.instanceColor.needsUpdate = true;
+    scene.add(cities);
+  }
+
+  // the Workshop: a candy-striped pole, a gingerbread hall with icing, gumdrops
+  function buildWorkshop() {
+    const g = new THREE.Group();
+    const { up, east, north } = frameAt(89.9, 0);
+    const put = (mesh, offE, offN, w, h, d) => { mesh.applyMatrix4(placeAt(89.9, 0, up, east, north, offE, offN, w, h, d)); g.add(mesh); };
+    put(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12), new THREE.MeshBasicMaterial({ map: stripeTexture('#f6f1e7', '#e5484d') })), 0, 0, 0.0035, 0.03, 0.0035);
+    put(new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe9a8 })), 0, 0, 0.007, 0.007, 0.007); // the lamp on top of the pole
+    const hall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ map: windowTexture(0x5A), color: 0xc98a4a }));
+    put(hall, 0.012, -0.006, 0.02, 0.012, 0.014);
+    put(new THREE.Mesh(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshBasicMaterial({ color: 0xf6f1e7 })), 0.012, -0.006, 0.02, 0.009, 0.014);
+    const drops = ['#e5484d', '#3ddc84', '#f5c451', '#a66bff', '#5aa9ff', '#ff8a3d'];
+    const r = mulberry32(0x6D5);
+    for (let i = 0; i < 14; i++) {
+      const ang = r() * 2 * Math.PI, rad = 0.012 + r() * 0.02, size = 0.002 + r() * 0.0025;
+      put(new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), new THREE.MeshBasicMaterial({ color: drops[i % drops.length] })), Math.sin(ang) * rad, Math.cos(ang) * rad, size, size * 0.8, size);
+    }
+    for (let i = 0; i < 5; i++) {
+      const ang = i * 1.3 + 0.4;
+      put(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 8), new THREE.MeshBasicMaterial({ map: stripeTexture('#f6f1e7', '#e5484d', 10) })), Math.sin(ang) * 0.03, Math.cos(ang) * 0.03, 0.0018, 0.014, 0.0018);
+    }
+    return g;
+  }
+  const DONE_CITY = new THREE.Color('#ffd27a'), TODO_CITY = new THREE.Color('#8391ad'), NEXT_CITY = new THREE.Color('#ff9a8c');
 
   function init(opts) {
     canvas = opts.canvas;
@@ -111,7 +184,7 @@ window.SantaGL = (() => {
     tailLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xf5c451, transparent: true, opacity: 0.95 }));
     scene.add(tailLine);
 
-    workshop = emojiSprite('🏠'); workshop.scale.set(0.02, 0.02, 1); workshop.position.copy(xyz(90, 0, 1.006)); scene.add(workshop);
+    workshop = buildWorkshop(); scene.add(workshop);
 
     // look around: drag = yaw/pitch, wheel = altitude, double-click = reset
     canvas.addEventListener('pointerdown', e => { dragging = { x: e.clientX, y: e.clientY, yaw: look.yaw, pitch: look.pitch }; canvas.setPointerCapture(e.pointerId); });
@@ -139,6 +212,7 @@ window.SantaGL = (() => {
     lights.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     lights.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
     lights.userData.stops = stops;
+    buildCities(stops);
     routeLine.geometry.setFromPoints(trackPts.map(p => xyz(p.lat, p.lon, 1.0018)));
     routeLine.computeLineDistances();
   }
@@ -155,9 +229,11 @@ window.SantaGL = (() => {
     const north = p.clone().cross(east).normalize();
     const yawRad = (hdg + look.yaw) * RAD;
     const fwd = north.clone().multiplyScalar(Math.cos(yawRad)).add(east.clone().multiplyScalar(Math.sin(yawRad))).normalize();
-    const alt = look.alt;
-    const wantPos = p.clone().multiplyScalar(1 + alt).add(fwd.clone().multiplyScalar(-alt * 0.35));
-    const pitch = (-28 + look.pitch) * RAD; // look a little down toward the ground ahead
+    const rooftops = s.phase === 'flight' && s.status === 'delivering';
+    const parked = s.phase !== 'flight';
+    const alt = rooftops ? Math.min(look.alt, 0.016) : parked ? Math.min(look.alt, 0.03) : look.alt;
+    const wantPos = p.clone().multiplyScalar(1 + alt).add(fwd.clone().multiplyScalar(rooftops ? -alt * 1.6 : parked ? -alt * 2.4 : -alt * 0.35));
+    const pitch = ((rooftops ? -16 : parked ? -24 : -28) + look.pitch) * RAD; // look down toward the ground ahead, less so when hovering over a skyline
     const dir = fwd.clone().multiplyScalar(Math.cos(pitch)).add(p.clone().multiplyScalar(Math.sin(pitch)));
     const wantTarget = wantPos.clone().add(dir);
     if (!camPos || camPos.distanceTo(wantPos) > 0.15) { camPos = wantPos.clone(); camTarget = wantTarget.clone(); }
@@ -172,6 +248,14 @@ window.SantaGL = (() => {
     const stops = lights.userData.stops, col = lights.geometry.getAttribute('color');
     stops.forEach((w, i) => { const c = (w.depart <= t || s.phase === 'done') ? DONE : TODO; col.setXYZ(i, c.r, c.g, c.b); });
     col.needsUpdate = true;
+    if (cities) {
+      const key = `${s.stopsDone}:${s.phase}:${s.next && s.next.i}:${s.at && s.at.i}`;
+      if (cities.userData.key !== key) {
+        cities.userData.key = key;
+        cityIndex.forEach((si, i) => { const w = stops[si]; cities.setColorAt(i, (w.depart <= t || s.phase === 'done' || s.at === w) ? DONE_CITY : (s.phase === 'flight' && s.next === w) ? NEXT_CITY : TODO_CITY); });
+        cities.instanceColor.needsUpdate = true;
+      }
+    }
     if (s.phase === 'flight' && s.next && !s.next.pole) { nextLight.geometry.setFromPoints([xyz(s.next.lat, s.next.lon, 1.003)]); nextLight.visible = true; } else nextLight.visible = false;
     routeLine.visible = s.phase !== 'done';
     if (s.phase === 'flight') { tailLine.geometry.setFromPoints(track(route, t - 150 * MIN, t).map(q => xyz(q.lat, q.lon, 1.0022))); tailLine.visible = true; } else tailLine.visible = false;

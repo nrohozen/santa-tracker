@@ -212,9 +212,89 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 .foot { max-width: 1100px; margin: 22px auto 0; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: .85rem; }
 .foot a { color: var(--muted); }
 
+/* ---------- Christmas: candy, gumdrops, lights, snow ---------- */
+.card { position: relative; overflow: hidden; }
+.card::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px;
+  background: repeating-linear-gradient(135deg, var(--red) 0 10px, #f6f1e7 10px 20px);
+  opacity: .9;
+}
+.tile { position: relative; overflow: hidden; }
+.tile::after { content: ''; position: absolute; right: -6px; top: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); opacity: .8; }
+.tile:nth-child(2n)::after { background: var(--red); box-shadow: 0 0 10px var(--red); }
+.tile:nth-child(3n)::after { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+
+.snow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: .75; }
+header.top, main, footer.foot { position: relative; z-index: 1; }
+
+.lights { position: absolute; left: 0; right: 0; top: 2px; width: 100%; height: 44px; pointer-events: none; }
+.bulbs circle { fill: var(--gold); filter: drop-shadow(0 0 4px currentColor); animation: twinkle 2.6s ease-in-out infinite; }
+.bulbs circle:nth-child(4n+1) { fill: #e5484d; color: #e5484d; animation-delay: 0s; }
+.bulbs circle:nth-child(4n+2) { fill: #3ddc84; color: #3ddc84; animation-delay: .65s; }
+.bulbs circle:nth-child(4n+3) { fill: #f5c451; color: #f5c451; animation-delay: 1.3s; }
+.bulbs circle:nth-child(4n+4) { fill: #5aa9ff; color: #5aa9ff; animation-delay: 1.95s; }
+@keyframes twinkle { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.status.deco-card { padding-top: 40px; }
+
+.holly { position: absolute; width: 64px; height: 38px; pointer-events: none; }
+.holly-tr { right: 12px; bottom: 6px; }
+.cane { position: absolute; width: 26px; height: 58px; top: 14px; pointer-events: none; }
+.cane-l { left: 10px; transform: rotate(-14deg); }
+.cane-r { right: 10px; transform: rotate(14deg) scaleX(-1); }
+.gingerbread { background: #3a2415; border: 3px dashed #f6f1e7; color: #fbf3e4; }
+.gingerbread::before { display: none; }
+.gingerbread { padding-left: 54px; padding-right: 54px; }
+.gingerbread h2 { color: #f5c451; }
+@media (max-width: 760px) { .gingerbread { padding-left: 18px; padding-right: 18px; } .cane { display: none; } }
+.gingerbread .label { color: #e8cfae; }
+.gingerbread .sub { color: #d9bb94; }
+.gingerbread .bar { background: #241509; border-color: #5a3a1e; }
+.gingerbread .checklist li { color: #c9ab86; }
+.gingerbread .checklist li.done { color: #fbf3e4; }
+.gingerbread .checklist li::before { content: ''; width: 11px; height: 11px; border-radius: 50% 50% 45% 45%; background: #6b4a2e; display: inline-block; align-self: center; }
+.gingerbread .checklist li:nth-child(5n+1).done::before { background: #e5484d; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35); }
+.gingerbread .checklist li:nth-child(5n+2).done::before { background: #3ddc84; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35); }
+.gingerbread .checklist li:nth-child(5n+3).done::before { background: #f5c451; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35); }
+.gingerbread .checklist li:nth-child(5n+4).done::before { background: #a66bff; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35); }
+.gingerbread .checklist li:nth-child(5n+5).done::before { background: #5aa9ff; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35); }
+
+.drops { position: absolute; right: 14px; top: 10px; display: flex; gap: 4px; }
+.drop { width: 18px; height: 18px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+
+/* gumdrop buttons */
+.mode, .chip, .btn { background-image: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,0) 55%); }
+.mode.is-on { background: var(--red); background-image: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.45), rgba(255,255,255,0) 45%); box-shadow: inset 0 -2px 0 rgba(0,0,0,.25); }
+.btn.primary { background-image: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.5), rgba(255,255,255,0) 45%); box-shadow: inset 0 -2px 0 rgba(0,0,0,.2); }
+.chip.is-on { background-image: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.18), rgba(255,255,255,0) 50%); }
+
+/* peppermint progress bars */
+.bar-fill { background: repeating-linear-gradient(135deg, var(--red) 0 8px, #f6f1e7 8px 16px); background-size: 200% 100%; animation: candy 6s linear infinite; }
+.bar-fill.ws { background: repeating-linear-gradient(135deg, var(--green) 0 8px, #f6f1e7 8px 16px); }
+@keyframes candy { from { background-position: 0 0; } to { background-position: 64px 0; } }
+@media (prefers-reduced-motion: reduce) { .bulbs circle, .bar-fill { animation: none; } }
+
 </style>
 </head>
 <body data-mode="live">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="sym-cane" viewBox="0 0 40 90">
+      <path d="M12 86 V30 a14 14 0 0 1 28 0 v6" fill="none" stroke="#f6f1e7" stroke-width="12" stroke-linecap="round"/>
+      <path d="M12 86 V30 a14 14 0 0 1 28 0 v6" fill="none" stroke="#e5484d" stroke-width="12" stroke-linecap="butt" stroke-dasharray="7 9"/>
+    </symbol>
+    <symbol id="sym-holly" viewBox="0 0 100 60">
+      <path d="M48 32 C40 10 20 6 4 14 C12 26 10 40 20 52 C30 44 42 44 48 32Z" fill="#2f9e5a"/>
+      <path d="M52 32 C60 10 80 6 96 14 C88 26 90 40 80 52 C70 44 58 44 52 32Z" fill="#2f9e5a"/>
+      <circle cx="44" cy="40" r="7" fill="#e5484d"/><circle cx="56" cy="42" r="7" fill="#e5484d"/><circle cx="50" cy="30" r="7" fill="#c73a3f"/>
+    </symbol>
+    <symbol id="sym-drop" viewBox="0 0 40 40">
+      <path d="M4 34 C4 14 12 4 20 4 C28 4 36 14 36 34 Z" fill="currentColor"/>
+      <path d="M12 28 C12 16 16 10 20 10" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
+      <g fill="#fff" fill-opacity=".7"><circle cx="14" cy="22" r="1.4"/><circle cx="24" cy="16" r="1.4"/><circle cx="28" cy="26" r="1.4"/><circle cx="19" cy="30" r="1.4"/></g>
+    </symbol>
+  </defs>
+</svg>
+<canvas id="snow" class="snow" aria-hidden="true"></canvas>
 <header class="top">
   <div class="brand"><a href="/">roho.foo</a><span class="sep">/</span><span>Santa Tracker</span><span class="badge" title="North Pole Logistics, internal tool. Mirrored here by an elf who should be wrapping.">ELF OPS · internal mirror</span></div>
   <div class="topright">
@@ -229,7 +309,17 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 <main>
   <p class="elfbar">You are looking at the elves' own tracker, not the one with the press office. Sleigh telemetry straight from the Workshop, with the dress rehearsal, the view from the sleigh, and ten years of past runs. <span class="muted">Mirrored to roho.foo by an elf who should be wrapping.</span></p>
 
-  <section class="card status">
+  <section class="card status deco-card">
+    <svg class="lights" viewBox="0 0 1000 44" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 6 Q125 40 250 10 T500 10 T750 10 T1000 8" fill="none" stroke="#2b3a26" stroke-width="2"/>
+      <g class="bulbs">
+        <circle cx="40" cy="20" r="6"/><circle cx="110" cy="31" r="6"/><circle cx="180" cy="30" r="6"/><circle cx="250" cy="14" r="6"/>
+        <circle cx="320" cy="29" r="6"/><circle cx="390" cy="31" r="6"/><circle cx="460" cy="16" r="6"/><circle cx="530" cy="28" r="6"/>
+        <circle cx="600" cy="31" r="6"/><circle cx="670" cy="17" r="6"/><circle cx="740" cy="27" r="6"/><circle cx="810" cy="31" r="6"/>
+        <circle cx="880" cy="18" r="6"/><circle cx="950" cy="26" r="6"/>
+      </g>
+    </svg>
+    <svg class="holly holly-tr" aria-hidden="true"><use href="#sym-holly"/></svg>
     <div class="status-row">
       <div>
         <div class="kicker" id="kicker">PRE-FLIGHT</div>
@@ -335,7 +425,9 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
     <p class="hint">Space plays and pauses, arrow keys nudge ten minutes. Share this exact moment: <a id="permalink" href="#" class="mono">?t=…</a></p>
   </section>
 
-  <section class="card workshop" id="workshop" hidden aria-labelledby="ws-h">
+  <section class="card workshop gingerbread" id="workshop" hidden aria-labelledby="ws-h">
+    <svg class="cane cane-l" aria-hidden="true"><use href="#sym-cane"/></svg>
+    <svg class="cane cane-r" aria-hidden="true"><use href="#sym-cane"/></svg>
     <h2 id="ws-h">Workshop board</h2>
     <div class="ws-grid">
       <div>
@@ -380,6 +472,7 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
   </section>
 
   <section class="card archive" aria-labelledby="archive-h">
+    <div class="drops" aria-hidden="true"><svg class="drop" style="color:#e5484d"><use href="#sym-drop"/></svg><svg class="drop" style="color:#3ddc84"><use href="#sym-drop"/></svg><svg class="drop" style="color:#f5c451"><use href="#sym-drop"/></svg><svg class="drop" style="color:#a66bff"><use href="#sym-drop"/></svg><svg class="drop" style="color:#5aa9ff"><use href="#sym-drop"/></svg></div>
     <h2 id="archive-h">Past runs</h2>
     <p class="archive-intro">Every run from the last ten Christmases, each one out of the Workshop and back. Santa never flies the same route twice, but he is all about efficiency: route planning draws a fresh plan for each time zone every year from the handful of tightest plans they can find, and whenever a country moves its clocks, the order of business moves with it. Pick a year to replay it.</p>
     <div class="years" id="years"></div>
@@ -405,7 +498,7 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 
 <footer class="foot">
   <span>North Pole Logistics, internal tool · mirrored to <a href="/">roho.foo</a> · © <span id="foot-year"></span> Nicholas Rohozen</span>
-  <span><a href="https://github.com/nrohozen/santa-tracker">source</a> · built for a quarterly "build it with AI" challenge</span>
+  <span><button id="snow-toggle" class="linkish" type="button" aria-pressed="true">❄ snow: on</button> · <a href="https://github.com/nrohozen/santa-tracker">source</a> · built for a quarterly "build it with AI" challenge</span>
 </footer>
 
 <script>
@@ -1187,7 +1280,7 @@ window.SantaGL = (() => {
   // lat/lon → Three.js coordinates that line up with an equirectangular texture on THREE.SphereGeometry
   const xyz = (lat, lon, r = 1) => { const la = lat * RAD, lo = lon * RAD; return new THREE.Vector3(r * Math.cos(la) * Math.cos(lo), r * Math.sin(la), -r * Math.cos(la) * Math.sin(lo)); };
 
-  let renderer, scene, camera, earth, atmo, stars, sunSprite, lights, nextLight, routeLine, tailLine, workshop;
+  let renderer, scene, camera, earth, atmo, stars, sunSprite, lights, nextLight, routeLine, tailLine, workshop, cities, cityIndex = [];
   let canvas, W = 1000, H = 500, route = null, fullTrack = [];
   let camPos = null, camTarget = null; // smoothed
   let last = null; // the last (state, time) drawn, so a resize or a drag can redraw while paused
@@ -1232,6 +1325,79 @@ window.SantaGL = (() => {
     const m = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: true });
     return new THREE.Sprite(m);
   };
+
+
+  // a building face: dark wall with a grid of lit windows (seeded so it never flickers)
+  function windowTexture(seed) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'); g.fillStyle = '#141c2c'; g.fillRect(0, 0, 64, 64);
+    const r = mulberry32(seed);
+    for (let y = 6; y < 60; y += 10) for (let x = 6; x < 60; x += 9) { if (r() < 0.62) { g.fillStyle = r() < 0.8 ? '#ffe9a8' : '#fff6d8'; g.fillRect(x, y, 5, 6); } }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; return t;
+  }
+  function stripeTexture(a, b, n = 8) {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const g = c.getContext('2d'); g.fillStyle = a; g.fillRect(0, 0, 64, 64); g.fillStyle = b;
+    for (let i = 0; i < n; i += 2) g.fillRect(0, i * 64 / n, 64, 64 / n);
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 6); t.colorSpace = THREE.NoColorSpace; return t;
+  }
+  // local frame at a point on the globe: returns a matrix placing a unit box (x east, y up, z south) there
+  function placeAt(lat, lon, up, east, north, offE, offN, w, h, d) {
+    const base = xyz(lat, lon).add(east.clone().multiplyScalar(offE)).add(north.clone().multiplyScalar(offN)).normalize();
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), base);
+    m.compose(base.clone().multiplyScalar(1 + h / 2), q, new THREE.Vector3(w, h, d));
+    return m;
+  }
+  const frameAt = (lat, lon) => { const up = xyz(lat, lon); let east = new THREE.Vector3(0, 1, 0).cross(up); east = east.length() < 1e-6 ? new THREE.Vector3(1, 0, 0) : east.normalize(); const north = up.clone().cross(east).normalize(); return { up, east, north }; };
+
+  // toy-scale skylines: a cluster of lit boxes per city, sized by population
+  function buildCities(stops) {
+    if (cities) { scene.remove(cities); cities.geometry.dispose(); }
+    const plan = [];
+    stops.forEach((w, si) => {
+      const r = mulberry32(hash32(si, 0xC17)), { up, east, north } = frameAt(w.lat, w.lon);
+      const scale = Math.log10(1 + w.pop); // 0 (village) … 1.6 (Tokyo)
+      const n = 5 + Math.round(10 * Math.min(1, scale));
+      for (let i = 0; i < n; i++) {
+        const ang = r() * 2 * Math.PI, rad = 0.0045 * Math.sqrt(r()) * (0.5 + scale / 2);
+        const h = (0.0015 + 0.011 * scale) * (0.35 + r() * 0.65) * (i === 0 ? 1.25 : 1);
+        const wdt = 0.0008 + r() * 0.0012;
+        plan.push({ si, m: placeAt(w.lat, w.lon, up, east, north, Math.sin(ang) * rad, Math.cos(ang) * rad, wdt, h, wdt) });
+      }
+    });
+    const wall = new THREE.MeshBasicMaterial({ map: windowTexture(0xB1D) });
+    const roof = new THREE.MeshBasicMaterial({ color: 0x1b2436 });
+    cities = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), [wall, wall, roof, roof, wall, wall], plan.length);
+    cityIndex = plan.map(b => b.si);
+    plan.forEach((b, i) => { cities.setMatrixAt(i, b.m); cities.setColorAt(i, TODO_CITY); });
+    cities.instanceMatrix.needsUpdate = true; cities.instanceColor.needsUpdate = true;
+    scene.add(cities);
+  }
+
+  // the Workshop: a candy-striped pole, a gingerbread hall with icing, gumdrops
+  function buildWorkshop() {
+    const g = new THREE.Group();
+    const { up, east, north } = frameAt(89.9, 0);
+    const put = (mesh, offE, offN, w, h, d) => { mesh.applyMatrix4(placeAt(89.9, 0, up, east, north, offE, offN, w, h, d)); g.add(mesh); };
+    put(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12), new THREE.MeshBasicMaterial({ map: stripeTexture('#f6f1e7', '#e5484d') })), 0, 0, 0.0035, 0.03, 0.0035);
+    put(new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe9a8 })), 0, 0, 0.007, 0.007, 0.007); // the lamp on top of the pole
+    const hall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ map: windowTexture(0x5A), color: 0xc98a4a }));
+    put(hall, 0.012, -0.006, 0.02, 0.012, 0.014);
+    put(new THREE.Mesh(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshBasicMaterial({ color: 0xf6f1e7 })), 0.012, -0.006, 0.02, 0.009, 0.014);
+    const drops = ['#e5484d', '#3ddc84', '#f5c451', '#a66bff', '#5aa9ff', '#ff8a3d'];
+    const r = mulberry32(0x6D5);
+    for (let i = 0; i < 14; i++) {
+      const ang = r() * 2 * Math.PI, rad = 0.012 + r() * 0.02, size = 0.002 + r() * 0.0025;
+      put(new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), new THREE.MeshBasicMaterial({ color: drops[i % drops.length] })), Math.sin(ang) * rad, Math.cos(ang) * rad, size, size * 0.8, size);
+    }
+    for (let i = 0; i < 5; i++) {
+      const ang = i * 1.3 + 0.4;
+      put(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 8), new THREE.MeshBasicMaterial({ map: stripeTexture('#f6f1e7', '#e5484d', 10) })), Math.sin(ang) * 0.03, Math.cos(ang) * 0.03, 0.0018, 0.014, 0.0018);
+    }
+    return g;
+  }
+  const DONE_CITY = new THREE.Color('#ffd27a'), TODO_CITY = new THREE.Color('#8391ad'), NEXT_CITY = new THREE.Color('#ff9a8c');
 
   function init(opts) {
     canvas = opts.canvas;
@@ -1291,7 +1457,7 @@ window.SantaGL = (() => {
     tailLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xf5c451, transparent: true, opacity: 0.95 }));
     scene.add(tailLine);
 
-    workshop = emojiSprite('🏠'); workshop.scale.set(0.02, 0.02, 1); workshop.position.copy(xyz(90, 0, 1.006)); scene.add(workshop);
+    workshop = buildWorkshop(); scene.add(workshop);
 
     // look around: drag = yaw/pitch, wheel = altitude, double-click = reset
     canvas.addEventListener('pointerdown', e => { dragging = { x: e.clientX, y: e.clientY, yaw: look.yaw, pitch: look.pitch }; canvas.setPointerCapture(e.pointerId); });
@@ -1319,6 +1485,7 @@ window.SantaGL = (() => {
     lights.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     lights.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
     lights.userData.stops = stops;
+    buildCities(stops);
     routeLine.geometry.setFromPoints(trackPts.map(p => xyz(p.lat, p.lon, 1.0018)));
     routeLine.computeLineDistances();
   }
@@ -1335,9 +1502,11 @@ window.SantaGL = (() => {
     const north = p.clone().cross(east).normalize();
     const yawRad = (hdg + look.yaw) * RAD;
     const fwd = north.clone().multiplyScalar(Math.cos(yawRad)).add(east.clone().multiplyScalar(Math.sin(yawRad))).normalize();
-    const alt = look.alt;
-    const wantPos = p.clone().multiplyScalar(1 + alt).add(fwd.clone().multiplyScalar(-alt * 0.35));
-    const pitch = (-28 + look.pitch) * RAD; // look a little down toward the ground ahead
+    const rooftops = s.phase === 'flight' && s.status === 'delivering';
+    const parked = s.phase !== 'flight';
+    const alt = rooftops ? Math.min(look.alt, 0.016) : parked ? Math.min(look.alt, 0.03) : look.alt;
+    const wantPos = p.clone().multiplyScalar(1 + alt).add(fwd.clone().multiplyScalar(rooftops ? -alt * 1.6 : parked ? -alt * 2.4 : -alt * 0.35));
+    const pitch = ((rooftops ? -16 : parked ? -24 : -28) + look.pitch) * RAD; // look down toward the ground ahead, less so when hovering over a skyline
     const dir = fwd.clone().multiplyScalar(Math.cos(pitch)).add(p.clone().multiplyScalar(Math.sin(pitch)));
     const wantTarget = wantPos.clone().add(dir);
     if (!camPos || camPos.distanceTo(wantPos) > 0.15) { camPos = wantPos.clone(); camTarget = wantTarget.clone(); }
@@ -1352,6 +1521,14 @@ window.SantaGL = (() => {
     const stops = lights.userData.stops, col = lights.geometry.getAttribute('color');
     stops.forEach((w, i) => { const c = (w.depart <= t || s.phase === 'done') ? DONE : TODO; col.setXYZ(i, c.r, c.g, c.b); });
     col.needsUpdate = true;
+    if (cities) {
+      const key = `${s.stopsDone}:${s.phase}:${s.next && s.next.i}:${s.at && s.at.i}`;
+      if (cities.userData.key !== key) {
+        cities.userData.key = key;
+        cityIndex.forEach((si, i) => { const w = stops[si]; cities.setColorAt(i, (w.depart <= t || s.phase === 'done' || s.at === w) ? DONE_CITY : (s.phase === 'flight' && s.next === w) ? NEXT_CITY : TODO_CITY); });
+        cities.instanceColor.needsUpdate = true;
+      }
+    }
     if (s.phase === 'flight' && s.next && !s.next.pole) { nextLight.geometry.setFromPoints([xyz(s.next.lat, s.next.lon, 1.003)]); nextLight.visible = true; } else nextLight.visible = false;
     routeLine.visible = s.phase !== 'done';
     if (s.phase === 'flight') { tailLine.geometry.setFromPoints(track(route, t - 150 * MIN, t).map(q => xyz(q.lat, q.lon, 1.0022))); tailLine.visible = true; } else tailLine.visible = false;
@@ -1857,7 +2034,7 @@ window.SantaGL = (() => {
     let cap;
     if (s.phase === 'pre') cap = `Parked at the loading bay, nose toward ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)} · drag to look around`;
     else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off, cookies under audit.';
-    else if (s.status === 'delivering') cap = `On the rooftops of ${s.at.name} · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km, bearing ${hdg.toFixed(0)}°`;
+    else if (s.status === 'delivering') cap = `Over the rooftops of ${s.at.name} · ${big(s.at.presents)} presents · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km, bearing ${hdg.toFixed(0)}°`;
     else cap = `Heading ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h · ${nextName} ${fmtInt(haversineKm(s, s.next))} km ahead · ${fmtDuration(s.etaMs)}`;
     $('pov-caption').textContent = cap;
     $('pov-coords').textContent = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
@@ -1912,6 +2089,27 @@ window.SantaGL = (() => {
       simT = clamp(simT + (e.code === 'ArrowRight' ? 10 : -10) * MIN); render(simT); syncUrl();
     }
   });
+
+  // ---------- snow ----------
+  (() => {
+    const cv = $('snow'); if (!cv) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let on = !reduce; try { if (localStorage.getItem('santa_snow') === 'off') on = false; } catch { /* ignore */ }
+    const btn = $('snow-toggle');
+    const g = cv.getContext('2d'); let flakes = [], w = 0, h = 0, raf = 0;
+    const size = () => { w = cv.width = innerWidth; h = cv.height = innerHeight; };
+    const seed = () => { flakes = Array.from({ length: Math.round(w / 18) }, () => ({ x: Math.random() * w, y: Math.random() * h, r: 1 + Math.random() * 2.2, v: 0.3 + Math.random() * 0.8, d: Math.random() * 2 * Math.PI })); };
+    const step = () => {
+      g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.85)';
+      for (const f of flakes) { f.y += f.v; f.d += 0.01; f.x += Math.sin(f.d) * 0.3; if (f.y > h + 4) { f.y = -4; f.x = Math.random() * w; } g.beginPath(); g.arc(f.x, f.y, f.r, 0, 2 * Math.PI); g.fill(); }
+      raf = requestAnimationFrame(step);
+    };
+    const apply = () => { cv.hidden = !on; if (btn) { btn.textContent = on ? '❄ snow: on' : '❄ snow: off'; btn.setAttribute('aria-pressed', String(on)); } cancelAnimationFrame(raf); if (on && !document.hidden) step(); else g.clearRect(0, 0, w, h); };
+    size(); seed(); addEventListener('resize', () => { size(); seed(); });
+    document.addEventListener('visibilitychange', apply);
+    if (btn) btn.onclick = () => { on = !on; try { localStorage.setItem('santa_snow', on ? 'on' : 'off'); } catch { /* ignore */ } apply(); };
+    apply();
+  })();
 
   const params = new URLSearchParams(location.search);
   const tParam = params.get('t') ? Date.parse(params.get('t')) : NaN;

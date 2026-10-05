@@ -349,7 +349,55 @@ export function telemetry(state) {
   return { altitudeM, cookies, milkL, lead, sackPct };
 }
 
-// Mission log: one line per completed arrival, newest first.
+// ---------- the elves ----------
+
+export const ELVES = ['Tinsel', 'Jingle', 'Pepper', 'Figgy', 'Noel', 'Juniper', 'Sprout', 'Cocoa', 'Marzipan', 'Flick'];
+export const ELF_ROLES = ['dispatch', 'sack loading', 'reindeer care', 'chimney intel', 'cookie QA', 'route planning', 'list reconciliation'];
+
+// Who is on shift. Four-hour UTC shifts, seeded, so everyone sees the same elf.
+export function elfOnDuty(time) {
+  const slot = Math.floor(+time / (4 * HOUR));
+  return { name: ELVES[hash32(slot, 7) % ELVES.length], role: ELF_ROLES[hash32(slot, 11) % ELF_ROLES.length], until: (slot + 1) * 4 * HOUR };
+}
+
+export const NOTICES = [
+  'Reminder: no glitter in the reindeer feed. We have talked about this.',
+  'The public trackers run a few minutes behind. This one is the source.',
+  'Cocoa break 03:00 UTC. Bring your own marshmallows.',
+  'Chimney 4B, Prague: narrow again this year. Small sack.',
+  'Lost and found: one mitten, blue, loading bay door 2.',
+  'Cookie QA reports a surplus of oatmeal raisin. Again.',
+  'Route planning has a new map. It is the same map. They are proud of it.',
+  'Rudolph would like it noted that the fog was not his fault.',
+  'Anyone who moved the big tape: dispatch would like a word.',
+  'Nice list is final. Please stop emailing list reconciliation.',
+  'The sleigh does not have a cup holder. Stop asking.',
+  'Weather desk: clear skies over the Pacific, snow over the Alps, opinions over Ohio.',
+];
+export function notice(time, periodMs = 25_000) {
+  const slot = Math.floor(+time / periodMs);
+  return NOTICES[hash32(slot, 3) % NOTICES.length];
+}
+
+// The Workshop board before launch: wrapping progress and the pre-flight checklist, both a function of time.
+export function workshopStatus(route, time) {
+  const start = Date.UTC(route.year, 0, 1);
+  const frac = Math.min(1, Math.max(0, (+time - start) / (route.launch - start)));
+  const wrapped = Math.round(route.totalPresents * Math.pow(frac, 0.85));
+  const daysLeft = (route.launch - +time) / 86_400_000;
+  const items = [
+    { label: 'Nice list, first pass', done: daysLeft < 200 },
+    { label: 'Reindeer flight physicals', done: daysLeft < 40 },
+    { label: 'Sleigh runners waxed', done: daysLeft < 24 },
+    { label: 'Cookie intake capacity test', done: daysLeft < 10 },
+    { label: 'Sun-line navigation calibrated', done: daysLeft < 4 },
+    { label: 'Nice list, final', done: daysLeft < 1 },
+    { label: 'Sack loaded', done: daysLeft < 0.25 },
+  ];
+  return { frac, wrapped, daysLeft, items };
+}
+
+// Dispatch log: one line per completed arrival, newest first, signed by whoever logged it.
 const NOTES = [
   'rooftop frost: minor', 'chimney clearance: nominal', 'cookies: above average',
   'one dog awake, negotiated', 'reindeer morale: high', 'carrots accepted', 'left before the cat noticed',
@@ -361,6 +409,7 @@ export function missionLog(state, limit = 6) {
   return done.slice(-limit).reverse().map(w => ({
     t: w.arrive, name: w.name, country: w.country, presents: w.presents,
     note: NOTES[(w.i * 5 + w.name.length) % NOTES.length],
+    by: ELVES[(w.i * 3 + 1) % ELVES.length],
   }));
 }
 

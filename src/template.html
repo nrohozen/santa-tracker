@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Santa Tracker · roho.foo</title>
-<meta name="description" content="Where Santa is right now, and where he will be on Christmas Eve: a sleigh that rides the midnight line around a real day/night map, with a preview mode and a time scrubber.">
+<meta name="description" content="The elves' own Santa tracker, mirrored to roho.foo: where the sleigh is right now, the dress rehearsal for Christmas Eve, a first-person 3D view from the sleigh, and ten years of past runs.">
 <link rel="canonical" href="https://roho.foo/santa/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="roho.foo">
 <meta property="og:title" content="Santa Tracker">
-<meta property="og:description" content="Santa rides the midnight line. Watch him do it, or preview Christmas Eve any day of the year.">
+<meta property="og:description" content="Not the tracker with the press office. The elves' one: sleigh telemetry straight from the Workshop, plus the dress rehearsal and ten years of past runs.">
 <meta property="og:url" content="https://roho.foo/santa/">
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%85%3C/text%3E%3C/svg%3E">
@@ -19,17 +19,19 @@
 </head>
 <body data-mode="live">
 <header class="top">
-  <div class="brand"><a href="/">roho.foo</a><span class="sep">/</span><span>Santa Tracker</span></div>
+  <div class="brand"><a href="/">roho.foo</a><span class="sep">/</span><span>Santa Tracker</span><span class="badge" title="North Pole Logistics, internal tool. Mirrored here by an elf who should be wrapping.">ELF OPS · internal mirror</span></div>
   <div class="topright">
     <label class="yearsel">Flight <select id="year" aria-label="Which year's flight"></select></label>
     <div class="modes" role="tablist" aria-label="Tracking mode">
-      <button id="mode-live" class="mode is-on" role="tab" aria-selected="true">Live</button>
-      <button id="mode-preview" class="mode" role="tab" aria-selected="false"><span class="long">Christmas Eve preview</span><span class="short">Dec 24 preview</span></button>
+      <button id="mode-live" class="mode is-on" role="tab" aria-selected="true">Live feed</button>
+      <button id="mode-preview" class="mode" role="tab" aria-selected="false"><span class="long">Dress rehearsal</span><span class="short">Rehearsal</span></button>
     </div>
   </div>
 </header>
 
 <main>
+  <p class="elfbar">You are looking at the elves' own tracker, not the one with the press office. Sleigh telemetry straight from the Workshop, with the dress rehearsal, the view from the sleigh, and ten years of past runs. <span class="muted">Mirrored to roho.foo by an elf who should be wrapping.</span></p>
+
   <section class="card status">
     <div class="status-row">
       <div>
@@ -42,7 +44,8 @@
         <div class="clock"><span class="clock-label" id="clock-local-label">Your time</span><span class="clock-value" id="clock-local">--:--</span></div>
       </div>
     </div>
-    <p class="hint" id="hint" hidden>Can't wait? Open the <button class="linkish" id="hint-preview">Christmas Eve preview</button> to see the whole flight.</p>
+    <p class="elfline"><span id="elf-duty"></span> <span class="sep">·</span> <em id="notice"></em></p>
+    <p class="hint" id="hint" hidden>Can't wait? Watch the <button class="linkish" id="hint-preview">dress rehearsal</button>: the whole run, as the elves have planned it.</p>
   </section>
 
   <section class="card mapcard">
@@ -50,7 +53,9 @@
       <button id="view-map" class="chip is-on" aria-pressed="true" title="The whole world, from the North Pole's operations room">🗺 Mission control</button>
       <button id="view-pov" class="chip" aria-pressed="false" title="Ride along: the view from just behind the sleigh, looking where Santa is going">🛷 From the sleigh</button>
     </div>
-    <svg id="pov" class="pov" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The view from Santa's sleigh: the curved horizon ahead, the night, the next cities as lights, and the reindeer team" hidden>
+    <div id="povwrap" class="povwrap" hidden>
+    <canvas id="gl" class="gl" aria-label="The view from Santa's sleigh in 3D: the globe ahead, the night side, the next cities as lights. Drag to look around, scroll to climb, double-click to reset." hidden></canvas>
+    <svg id="pov" class="pov" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The view from Santa's sleigh: the curved horizon ahead, the night, the next cities as lights, and the reindeer team">
       <defs>
         <clipPath id="fp-clip"><path id="fp-ground-clip" d=""/></clipPath>
         <radialGradient id="sunglow"><stop offset="0" stop-color="#fff6d0" stop-opacity="1"/><stop offset=".22" stop-color="#f5c451" stop-opacity=".85"/><stop offset="1" stop-color="#f5c451" stop-opacity="0"/></radialGradient>
@@ -67,8 +72,10 @@
         <path id="fp-night" class="night" fill-rule="evenodd"/>
         <path id="fp-route" class="route-ahead"/>
         <g id="pov-stops"/>
-        <text id="fp-next-label" class="fp-label" text-anchor="middle" visibility="hidden"></text>
       </g>
+    </svg>
+    <svg id="hud" class="hud" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <text id="fp-next-label" class="fp-label" text-anchor="middle" visibility="hidden"></text>
       <g class="team" aria-hidden="true">
         <text x="500" y="332" text-anchor="middle" font-size="13">🦌</text>
         <circle id="fp-nose" cx="500" cy="321" r="2.6" class="nose"/>
@@ -82,6 +89,7 @@
       <text id="pov-coords" class="pov-caption mono" x="984" y="24" text-anchor="end"></text>
       <text id="pov-caption" class="pov-caption" x="16" y="490"></text>
     </svg>
+    </div>
     <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map showing Santa's position, his route, and the night side of Earth">
       <defs>
         <clipPath id="clip"><rect x="0" y="0" width="1000" height="500"/></clipPath>
@@ -130,6 +138,22 @@
     <p class="hint">Space plays and pauses, arrow keys nudge ten minutes. Share this exact moment: <a id="permalink" href="#" class="mono">?t=…</a></p>
   </section>
 
+  <section class="card workshop" id="workshop" hidden aria-labelledby="ws-h">
+    <h2 id="ws-h">Workshop board</h2>
+    <div class="ws-grid">
+      <div>
+        <div class="label">Presents wrapped</div>
+        <div class="value mono" id="ws-wrapped">0</div>
+        <div class="bar"><div class="bar-fill ws" id="ws-bar" style="width:0%"></div></div>
+        <div class="sub" id="ws-sub"></div>
+      </div>
+      <div>
+        <div class="label">Pre-flight checklist</div>
+        <ul class="checklist" id="ws-list"></ul>
+      </div>
+    </div>
+  </section>
+
   <section class="tiles" aria-label="Telemetry">
     <div class="tile"><div class="label">Presents delivered</div><div class="value" id="t-presents">0</div><div class="sub" id="t-presents-sub"></div></div>
     <div class="tile"><div class="label">Stops</div><div class="value" id="t-stops">0</div><div class="sub" id="t-stops-sub"></div></div>
@@ -141,30 +165,32 @@
 
   <section class="grid2">
     <div class="card">
-      <h2>Sleigh systems</h2>
+      <h2>Sleigh telemetry</h2>
       <dl class="systems">
         <div><dt>Altitude</dt><dd id="s-alt">—</dd></div>
         <div><dt>Lead reindeer</dt><dd id="s-lead">—</dd></div>
         <div><dt>Cookies</dt><dd id="s-cookies">—</dd></div>
         <div><dt>Milk</dt><dd id="s-milk">—</dd></div>
+        <div><dt>List sync</dt><dd id="s-list">—</dd></div>
+        <div><dt>Chimney clearance</dt><dd id="s-chimney">—</dd></div>
         <div class="wide"><dt>Sack</dt><dd><div class="bar"><div class="bar-fill" id="s-sack-bar"></div></div><span id="s-sack">100% full</span></dd></div>
       </dl>
     </div>
     <div class="card">
-      <h2>Mission log</h2>
-      <ol class="log" id="log"><li class="muted">Nothing yet. The elves are still wrapping.</li></ol>
+      <h2>Dispatch log</h2>
+      <ol class="log" id="log"><li class="muted">Nothing logged yet. Dispatch is wrapping.</li></ol>
     </div>
   </section>
 
   <section class="card archive" aria-labelledby="archive-h">
-    <h2 id="archive-h">Flight archive</h2>
-    <p class="archive-intro">Every route from the last ten Christmases, each one out of the Workshop and back. Santa never flies the same route twice, but he is all about efficiency: the elves draw a fresh plan for each time zone every year from the handful of tightest plans they can find, and whenever a country moves its clocks, his order of business moves with it. Pick a year to replay it.</p>
+    <h2 id="archive-h">Past runs</h2>
+    <p class="archive-intro">Every run from the last ten Christmases, each one out of the Workshop and back. Santa never flies the same route twice, but he is all about efficiency: route planning draws a fresh plan for each time zone every year from the handful of tightest plans they can find, and whenever a country moves its clocks, the order of business moves with it. Pick a year to replay it.</p>
     <div class="years" id="years"></div>
     <p class="hint" id="year-notes"></p>
   </section>
 
   <details class="card how">
-    <summary>How this works</summary>
+    <summary>How this works (for new elves)</summary>
     <div class="how-body">
       <p><strong>The route.</strong> Santa leaves the Workshop at the North Pole and delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour, with at most six minutes per city, and between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
       <p><strong>Santa is all about efficiency.</strong> The order inside each zone is a travelling-salesman plan: nearest-neighbour tours starting from the cities closest to where the sleigh is coming from, polished with 2-opt until no two legs cross. The elves accept any plan within 6&nbsp;% of the best one they found, and the year's seed picks among those, so every Christmas is a different route and every route is a tight one. Each year's card shows how close it came to the best plan.</p>
@@ -181,13 +207,19 @@
 </main>
 
 <footer class="foot">
-  <span>© <span id="foot-year"></span> Nicholas Rohozen · <a href="/">roho.foo</a></span>
+  <span>North Pole Logistics, internal tool · mirrored to <a href="/">roho.foo</a> · © <span id="foot-year"></span> Nicholas Rohozen</span>
   <span><a href="https://github.com/nrohozen/santa-tracker">source</a> · built for a quarterly "build it with AI" challenge</span>
 </footer>
 
 <script>
 /*__DATA__*/
 /*__ENGINE__*/
+</script>
+<script>
+/*__THREE__*/
+</script>
+<script>
+/*__VIEW3D__*/
 /*__UI__*/
 </script>
 </body>

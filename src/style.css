@@ -18,6 +18,8 @@
 html, body { margin: 0; }
 body {
   background: var(--bg);
+  border-top: 5px solid transparent;
+  border-image: repeating-linear-gradient(135deg, var(--red) 0 12px, #f6f1e7 12px 24px) 5;
   color: var(--text);
   font: 16px/1.5 var(--sans);
   padding: 0 16px calc(24px + env(safe-area-inset-bottom));
@@ -35,6 +37,11 @@ button, select { font: inherit; }
 .brand { font-weight: 700; letter-spacing: .01em; display: flex; align-items: center; gap: 8px; }
 .brand a { color: var(--text); text-decoration: none; }
 .brand .sep { color: var(--muted); font-weight: 400; }
+.badge { font-family: var(--mono); font-size: .66rem; letter-spacing: .1em; color: var(--green); border: 1px solid rgba(61, 220, 132, .45); border-radius: 999px; padding: 2px 8px; margin-left: 4px; white-space: nowrap; }
+.elfbar { margin: 0; padding: 10px 14px; border-left: 4px solid var(--red); background: var(--card); border-radius: 10px; color: #c9d3e3; font-size: .92rem; }
+.elfline { margin: 10px 0 0; color: var(--muted); font-size: .9rem; }
+.elfline em { font-style: italic; color: #b7c2d6; }
+.elfline .sep { margin: 0 6px; }
 .topright { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .yearsel { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .9rem; }
 .yearsel select { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-family: var(--mono); }
@@ -68,8 +75,13 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 .views { display: flex; gap: 6px; padding: 0 2px 8px; flex-wrap: wrap; }
 .chip { background: var(--card-2); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: .9rem; }
 .chip.is-on { color: var(--text); border-color: var(--gold); background: #1d2742; }
-#pov { display: block; width: 100%; height: auto; border-radius: 8px; background: #02040a; }
-#map[hidden], #pov[hidden] { display: none; }
+.povwrap { position: relative; aspect-ratio: 2 / 1; border-radius: 8px; overflow: hidden; background: #02040a; }
+.gl, #pov, .hud { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.gl { cursor: grab; touch-action: none; }
+.gl:active { cursor: grabbing; }
+.hud { pointer-events: none; }
+#pov { background: #02040a; }
+#map[hidden], #povwrap[hidden], #pov[hidden], .gl[hidden] { display: none; }
 .stars { fill: #fff; fill-opacity: .85; }
 .fp-horizon { fill: none; stroke: #8fc1ff; stroke-opacity: .5; stroke-width: 8; filter: blur(3px); }
 .pov-land { fill: #2f4b6e; stroke: #4e76a8; stroke-width: .8; }
@@ -126,6 +138,18 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 #scrub { width: 100%; accent-color: var(--red); margin: 6px 0 2px; }
 .scrub-labels { display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); gap: 8px; }
 .scrub-labels .mono { color: var(--text); }
+
+.workshop .ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+@media (max-width: 760px) { .workshop .ws-grid { grid-template-columns: 1fr; } }
+.workshop .label { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.workshop .value { font-size: 1.8rem; font-variant-numeric: tabular-nums; margin: 2px 0 6px; }
+.workshop .sub { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+.bar-fill.ws { background: linear-gradient(90deg, var(--green), var(--gold)); }
+.checklist { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: .92rem; }
+.checklist li { display: flex; gap: 8px; align-items: baseline; color: var(--muted); }
+.checklist li.done { color: var(--text); }
+.checklist li::before { content: '○'; font-family: var(--mono); color: var(--muted); }
+.checklist li.done::before { content: '●'; color: var(--green); }
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }

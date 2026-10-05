@@ -1,19 +1,30 @@
 # Santa Tracker
 
-*Santa rides the midnight line.*
+*The elves' own tracker. Not the one with the press office.*
 
-A single-file Santa tracker: where the sleigh is right now, and, any day of
-the year, where it will be on Christmas Eve. Live at **https://roho.foo/santa/**.
+A single-file Santa tracker framed as the North Pole's internal ops console,
+mirrored to the web: where the sleigh is right now, the dress rehearsal for
+Christmas Eve, a first-person 3D view from the sleigh, and ten years of past
+runs. Live at **https://roho.foo/santa/**.
 
-![Christmas Eve preview, 23:40 UTC: Santa over West Africa, the night side of Earth shaded from the real sun position](docs/preview.png)
+![Dress rehearsal, 01:10 UTC on Dec 25: Mission control with every delivered city lit, the sleigh over the Atlantic, the elf on duty and the dispatch log](docs/preview.png)
 
-![Santa's view: the globe from the sleigh over Almaty, north up, the route and the solar-midnight line drawn on the sphere](docs/santas-view.png)
+![From the sleigh, in 3D: leaving Tokyo for Sapporo, Honshu and Hokkaido ahead, stars above the curved horizon, the reindeer in front](docs/santas-view.png)
+
+![Pre-flight: the Workshop board with wrapping progress and the pre-flight checklist](docs/workshop.png)
 
 ## What it does
 
-- **Live mode.** Before December 24 the sleigh is parked at the North Pole with
+- **The elves' framing.** Everything is written from inside the Workshop: a
+  *Live feed* and a *Dress rehearsal* instead of a preview, a *Workshop board*
+  before launch (presents wrapped so far and a pre-flight checklist that ticks
+  itself off as the date approaches), an elf on duty with a four-hour shift
+  roster, rotating notices from the departments, and a *Dispatch log* signed by
+  whichever elf logged the stop. All of it is a deterministic function of the
+  clock, so everyone sees the same elf and the same notice.
+- **Live feed.** Before December 24 the sleigh is parked at the Workshop with
   a countdown to launch. During the flight it shows Santa's position, the city
-  he is in or heading to, and the counters. After the flight: mission complete.
+  he is in or heading to, and the counters. After the flight: run complete.
 - **Christmas Eve preview** (the challenge's required "as if it were December
   24–25" mode). The same code with a simulated clock: a scrubber across the
   whole 27-hour flight, play at 1 minute to 1 hour per second, *Now, on
@@ -22,18 +33,19 @@ the year, where it will be on Christmas Eve. Live at **https://roho.foo/santa/**
   deep-linked with `?t=2026-12-24T18:00Z`.
 - **Two views.** *Mission control* is the whole world on an equirectangular
   map: a short fading tail behind the sleigh and every delivered city lit
-  green, so the picture fills up as the night goes on. *From the sleigh* is a
-  first-person chase camera a little above and behind Santa, looking along
-  his heading: a true perspective projection of the globe (camera 420 km up,
-  pitched 36° down, 90° field of view), so the horizon curves, the stars and
-  the sun sit where they should, the night side is drawn on the ground, the
-  next cities appear as lights that grow as he closes in, the route ahead is
-  dotted on the ground, and the reindeer team is in the foreground with
-  Rudolph's nose on. Coastlines are clipped to the horizon properly (an
-  azimuthal projection around the nadir, Sutherland–Hodgman against the
-  horizon circle, then a near-plane clip), including the case where the whole
-  view is inland. The choice sticks (`localStorage`) and `?view=pov`
-  deep-links it.
+  green, so the picture fills up as the night goes on. *From the sleigh* is
+  Santa's point of view in real 3D: a WebGL globe (Three.js, vendored into the
+  single file) with a chase camera just behind the sleigh looking along the
+  heading. The night side comes from the real sun direction in the fragment
+  shader with a warm band along the terminator, there is an atmosphere rim,
+  a seeded starfield, the sun where it actually is, cities as lights with
+  clamped point sizes, the dashed route ahead and the gold tail behind, the
+  Workshop at the pole, and the reindeer team in the foreground with Rudolph's
+  nose on. Drag to look around, scroll to climb, double-click to reset. When
+  WebGL is unavailable the same view falls back to an SVG perspective
+  renderer (azimuthal projection around the nadir, Sutherland–Hodgman against
+  the horizon circle, near-plane clip). The choice sticks (`localStorage`) and
+  `?view=pov` deep-links it.
 - **Efficient routes.** Santa is all about efficiency. Inside each time zone
   the order is a travelling-salesman plan: nearest-neighbour tours from the
   cities closest to where the sleigh is coming from, polished with 2-opt
@@ -64,8 +76,9 @@ the year, where it will be on Christmas Eve. Live at **https://roho.foo/santa/**
   list also carries real time-zone history (below), so when a country moved
   its clocks, its place in that year's route moved too. Past years render in
   the past tense with that year's real sun.
-- **Self-contained and private.** One HTML file, no external requests after
-  load, no analytics, no geolocation.
+- **Self-contained and private.** One HTML file (about 790 KB, of which
+  Three.js is 620 KB), no external requests after load, no analytics, no
+  geolocation.
 
 ## How the route works
 
@@ -109,7 +122,9 @@ clock. The year rolls over to the next Christmas once the sleigh is home.
 ```
 src/stops.mjs     252 cities (197 countries): lat, lon, UTC offset on Dec 24, metro population; SKIPPED list
 src/engine.mjs    pure engine: route per year (seeded order + TZ history), position at time t, sun/terminator, telemetry, log, TopoJSON decoder
-src/ui.js         DOM + SVG rendering, modes, year select + archive grid, scrubber, keyboard, ?t= / ?y= deep links
+src/ui.js         DOM + SVG rendering, modes, year select + archive grid, scrubber, keyboard, ?t= / ?y= / ?view= deep links
+src/three-view.js the 3D sleigh view (Three.js): globe shader, lights, route, chase camera, drag/zoom
+vendor/           three.min.js r152 (MIT) + license, inlined by the build
 src/style.css     dark "ops dashboard" theme, phone-friendly
 src/template.html page skeleton with /*__TOKENS__*/
 data/land-110m.json  Natural Earth land, 110 m, from world-atlas@2 (public domain)
@@ -118,7 +133,7 @@ test/             node:test suite for the engine
 ```
 
 ```
-npm test              # 25 engine tests
+npm test              # 26 engine tests
 node build.mjs        # writes dist/index.html
 ```
 
@@ -140,4 +155,5 @@ Not affiliated with NORAD, Google, or the North Pole.
 ## License
 
 MIT. Map data: Natural Earth (public domain) via
-[world-atlas](https://github.com/topojson/world-atlas).
+[world-atlas](https://github.com/topojson/world-atlas). 3D rendering:
+[Three.js](https://threejs.org) r152 (MIT), vendored in `vendor/`.

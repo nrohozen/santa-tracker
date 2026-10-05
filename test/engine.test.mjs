@@ -6,6 +6,7 @@ import {
   slerp, haversineKm, decodeTopo, missionYear, arrivalForOffset, telemetry, missionLog, track, wrapLon,
   SKIPPED, stopsForYear, routeChanges, TZ_HISTORY, orderBand, hash32, mulberry32, ARCHIVE_YEARS,
   pathKm, twoOpt, PLAN_TOLERANCE, bearing,
+  ELVES, ELF_ROLES, NOTICES, elfOnDuty, notice, workshopStatus,
 } from '../src/engine.mjs';
 
 const YEAR = 2026;
@@ -255,6 +256,24 @@ test('bearing: due east along the equator, due north up a meridian', () => {
   assert.ok(Math.abs(bearing({ lat: 0, lon: 0 }, { lat: 0, lon: 10 }) - 90) < 1e-6);
   assert.ok(Math.abs(bearing({ lat: 0, lon: 0 }, { lat: 10, lon: 0 }) - 0) < 1e-6);
   assert.ok(Math.abs(bearing({ lat: 10, lon: 0 }, { lat: 0, lon: 0 }) - 180) < 1e-6);
+});
+
+test('the elves: shifts, notices and the workshop board are deterministic and sane', () => {
+  const t = Date.UTC(2026, 9, 5, 19, 30);
+  assert.deepEqual(elfOnDuty(t), elfOnDuty(t + 5 * MIN));
+  assert.ok(ELVES.includes(elfOnDuty(t).name) && ELF_ROLES.includes(elfOnDuty(t).role));
+  assert.ok(elfOnDuty(t).until > t && elfOnDuty(t).until - t <= 4 * HOUR);
+  assert.equal(notice(t), notice(t + 1000));
+  assert.ok(NOTICES.includes(notice(t)));
+  const ws = workshopStatus(route, t);
+  assert.ok(ws.frac > 0.7 && ws.frac < 1, `frac ${ws.frac}`);
+  assert.ok(ws.wrapped > 0 && ws.wrapped < route.totalPresents);
+  assert.equal(ws.items.filter(i => i.done).length, 1, 'only the first-pass list is done in October');
+  const eve = workshopStatus(route, route.launch - HOUR);
+  assert.equal(eve.items.filter(i => i.done).length, ws.items.length, 'everything ticked an hour before launch');
+  assert.equal(workshopStatus(route, route.launch).wrapped, route.totalPresents);
+  const log = missionLog(stateAt(route, stops.find(s => s.name === 'Paris').arrive + 20 * 1000));
+  assert.ok(ELVES.includes(log[0].by));
 });
 
 test('telemetry, log and track are deterministic and bounded', () => {

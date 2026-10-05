@@ -138,6 +138,11 @@
 
   const landPolys = decodeTopo(LAND_TOPO, 'land');
   const landVecs = landPolys.map(poly => poly.map(ring => ring.map(([lon, lat]) => toVec({ lat, lon }))));
+  // real 3D when WebGL is available; the SVG renderer below is the fallback
+  let GL = window.SantaGL && SantaGL.supported() ? SantaGL : null;
+  if (GL) { try { GL.init({ canvas: $('gl'), landD: ringsToPath(landPolys) }); } catch (e) { console.warn('3D view unavailable, using the 2D renderer', e); GL = null; } }
+  $('gl').toggleAttribute('hidden', !GL); $('pov').toggleAttribute('hidden', !!GL);
+  if (GL) GL.labelSink = (st, pos) => setNextLabel(st, pos);
   $('land').appendChild(el('path', { id: 'land-path', d: ringsToPath(landPolys), 'fill-rule': 'evenodd' }));
   const grat = $('graticule');
   for (let lon = -150; lon <= 150; lon += 30) grat.appendChild(el('line', { x1: px({ lat: 0, lon })[0], x2: px({ lat: 0, lon })[0], y1: 0, y2: H }));
@@ -173,11 +178,12 @@
       pg.appendChild(pc); povStopEls.push([w, pc]);
     }
     fullTrack = track(route, route.launch, route.home);
+    if (GL) GL.setRoute(route, fullTrack);
     $('scrub').min = route.launch; $('scrub').max = route.home; $('scrub').value = route.launch;
     $('scrub-min').textContent = `Launch · ${utcStamp(route.launch)}`;
     $('scrub-max').textContent = `Home · ${utcStamp(route.home)}`;
     $('how-totals').textContent = `In ${route.year} that is ${route.stopCount} stops, about ${fmtInt(route.totalKm)} km, in ${fmtDuration(route.home - route.launch)}.`;
-    $('how-countries').textContent = `The route touches ${countryCount()} countries and territories: every country where someone is waiting up, one city each where only a capital was missing. ${SKIPPED.length} are left to sleep because public Christmas celebration there is banned or essentially absent: ${SKIPPED.map(k => `${k.country} (${k.why})`).join(', ')}. The list lives in the source, where it can be argued with.`;
+    $('how-countries').textContent = `The route touches ${countryCount()} countries and territories: every country where someone is waiting up, one city each where only a capital was missing. ${SKIPPED.length} are left to sleep because public Christmas celebration there is banned or essentially absent: ${SKIPPED.map(k => `${k.country} (${k.why})`).join(', ')}. The list lives in the source, where list reconciliation can argue with it.`;
     $('foot-year').textContent = String(new Date().getFullYear());
   }
 
@@ -278,7 +284,7 @@
       $('clock-local-label').textContent = viewerZone ? `Your time · ${viewerZone.split('/').pop().replace('_', ' ')}` : 'Your time';
       $('clock-local').textContent = localFmtTime(t);
     } else {
-      const word = past ? 'Archive' : 'Simulated';
+      const word = past ? 'Archive' : 'Rehearsal';
       $('clock-utc-label').textContent = `${word} · UTC`;
       $('clock-utc').textContent = `Dec ${new Date(t).getUTCDate()}${past ? ' ' + year : ''} ${fmtClockUtc(t)}`;
       $('clock-local-label').textContent = `${word} · your time`;
@@ -290,23 +296,23 @@
     const k = $('kicker'), h = $('headline'), sub = $('subline');
     k.className = 'kicker';
     if (s.phase === 'pre') {
-      k.classList.add('pre'); k.textContent = prefix + 'PRE-FLIGHT · NORTH POLE';
-      h.textContent = `Santa ${is} at the North Pole, loading the sleigh`;
+      k.classList.add('pre'); k.textContent = prefix + 'LOADING BAY · THE WORKSHOP';
+      h.textContent = past ? 'Santa was at the Workshop while the elves loaded the sleigh' : 'Santa is at the Workshop. The elves are loading the sleigh.';
       const launchLocal = `${localFmtDate(route.launch)} ${localFmtTime(route.launch)} your time`;
       sub.textContent = `Launch in ${fmtDuration(s.untilLaunchMs)} · ${utcStamp(route.launch)} (${launchLocal}). First stop: ${s.next.name}.`;
       $('hint').hidden = mode !== 'live';
     } else if (s.phase === 'done') {
-      k.classList.add('done'); k.textContent = prefix + 'MISSION COMPLETE';
-      h.textContent = `Santa ${is} home at the North Pole`;
+      k.classList.add('done'); k.textContent = prefix + 'RUN COMPLETE · SLEIGH IN THE BARN';
+      h.textContent = `Santa ${is} home. The elves ${past ? 'counted' : 'are counting'} the cookies.`;
       sub.textContent = `${route.stopCount} stops, ${big(route.totalPresents)} presents, ${fmtInt(route.totalKm)} km. The reindeer ${past ? 'slept well' : 'are asleep'}.`;
       $('hint').hidden = true;
     } else if (s.status === 'delivering') {
-      k.textContent = prefix + 'IN FLIGHT · ON THE ROOFTOPS';
+      k.textContent = prefix + 'ON THE ROOFTOPS';
       h.textContent = `Santa ${is} in ${s.at.name}, ${s.at.country}`;
       sub.textContent = `${localStamp(s.at)} · ${big(s.at.presents)} presents here · next: ${s.next.name} in ${fmtDuration(s.etaMs)}`;
       $('hint').hidden = true;
     } else {
-      k.textContent = prefix + 'IN FLIGHT · EN ROUTE';
+      k.textContent = prefix + 'AIRBORNE · EN ROUTE';
       h.textContent = s.next.pole ? `Santa ${is} heading home to the North Pole` : `Santa ${is} on his way to ${s.next.name}, ${s.next.country}`;
       const from = s.at.pole ? 'the North Pole' : s.at.name;
       sub.textContent = `Left ${from} ${fmtDuration(t - s.at.depart)} ${past ? 'earlier' : 'ago'} · ${fmtInt(s.speedKmh)} km/h · arrives in ${fmtDuration(s.etaMs)}`;
@@ -350,6 +356,26 @@
     $('s-milk').textContent = `${tel.milkL.toFixed(1)} L`;
     $('s-sack-bar').style.width = `${tel.sackPct.toFixed(1)}%`;
     $('s-sack').textContent = `${tel.sackPct.toFixed(1)}% full`;
+    $('s-list').textContent = s.phase === 'pre' ? (workshopStatus(route, t).items[5].done ? 'final · synced' : 'first pass · syncing') : 'final · synced Dec 23';
+    $('s-chimney').textContent = s.phase !== 'flight' ? '—' : s.status === 'delivering' ? (s.at.name === 'Prague' ? 'narrow (4B)' : 'nominal') : 'next one measured';
+
+    // the elves
+    const duty = elfOnDuty(t);
+    $('elf-duty').textContent = `On duty: ${duty.name} (${duty.role}) until ${fmtClockUtc(duty.until)} UTC`;
+    $('notice').textContent = notice(t);
+    const ws = $('workshop');
+    if (s.phase === 'pre') {
+      const w = workshopStatus(route, t);
+      ws.hidden = false;
+      $('ws-wrapped').textContent = big(w.wrapped);
+      $('ws-bar').style.width = `${(100 * w.wrapped / route.totalPresents).toFixed(2)}%`;
+      $('ws-sub').textContent = `of ${big(route.totalPresents)} · ${(100 * w.wrapped / route.totalPresents).toFixed(1)}% · ${w.items.filter(i => i.done).length} of ${w.items.length} checks done · launch in ${fmtDuration(route.launch - t)}`;
+      const wsKey = w.items.map(i => +i.done).join('');
+      if (ws.dataset.key !== wsKey) {
+        ws.dataset.key = wsKey; const ul = $('ws-list'); ul.textContent = '';
+        for (const it of w.items) { const li = document.createElement('li'); li.className = it.done ? 'done' : ''; li.textContent = it.label; ul.appendChild(li); }
+      }
+    } else ws.hidden = true;
 
     // log (only rebuild when the set of arrivals changes)
     const logKey = `${year}:${s.phase}:${s.stopsDone}:${s.at && s.at.i}`;
@@ -359,7 +385,7 @@
       const ol = $('log'); ol.textContent = '';
       if (!items.length) {
         const li = document.createElement('li'); li.className = 'muted';
-        li.textContent = s.phase === 'pre' ? 'Nothing yet. The elves are still wrapping.' : 'Airborne. First stop coming up.';
+        li.textContent = s.phase === 'pre' ? 'Nothing logged yet. Dispatch is wrapping.' : 'Airborne. First stop coming up. — dispatch';
         ol.appendChild(li);
       }
       for (const it of items) {
@@ -367,7 +393,7 @@
         const when = document.createElement('span'); when.className = 'when'; when.textContent = `${fmtClockUtc(it.t)}Z`;
         const body = document.createElement('span');
         body.textContent = `${it.name}, ${it.country} · ${big(it.presents)} presents · `;
-        const note = document.createElement('span'); note.className = 'note'; note.textContent = it.note;
+        const note = document.createElement('span'); note.className = 'note'; note.textContent = `${it.note} — ${it.by}`;
         body.appendChild(note); li.append(when, body); ol.appendChild(li);
       }
     }
@@ -389,6 +415,7 @@
   }
 
   function renderPov(s, t, tel) {
+    if (GL) { const out = GL.render(s, t); setNextLabel(s, out ? out.label : null); hud(s, t, tel); return; }
     const cam = fpCamera(s);
     // sky: stars and the sun are directions at infinity; the ground is drawn over them
     let stars = '';
@@ -439,23 +466,22 @@
       ce.classList.toggle('done', w.depart <= t || s.phase === 'done');
       ce.classList.toggle('next', s.phase === 'flight' && s.next === w);
     }
+    let pos = null;
+    if (s.next && !s.next.pole) { const q = fpCam(cam, toVec(s.next), false); if (q[3] && q[2] > FP.near) { const [x, y] = fpProj(cam, q); pos = { x, y }; } }
+    setNextLabel(s, pos);
+    hud(s, t, tel);
+  }
+  function setNextLabel(s, pos) {
     const lab = $('fp-next-label');
-    let labOk = false;
-    if (s.next && !s.next.pole) {
-      const q = fpCam(cam, toVec(s.next), false);
-      if (q[3] && q[2] > FP.near) {
-        const [x, y] = fpProj(cam, q);
-        lab.setAttribute('x', x.toFixed(1)); lab.setAttribute('y', (y - 10).toFixed(1));
-        lab.textContent = `${s.next.name} · ${fmtInt(haversineKm(s, s.next))} km`; labOk = true;
-      }
-    }
-    lab.setAttribute('visibility', labOk ? 'visible' : 'hidden');
-    // HUD
+    if (pos) { lab.setAttribute('x', pos.x.toFixed(1)); lab.setAttribute('y', (pos.y - 12).toFixed(1)); lab.textContent = `${s.next.name} · ${fmtInt(haversineKm(s, s.next))} km`; }
+    lab.setAttribute('visibility', pos ? 'visible' : 'hidden');
+  }
+  function hud(s, t, tel) {
     const hdg = s.next ? bearing(s, s.next) : 0;
     const nextName = s.next ? (s.next.pole ? 'the Workshop' : s.next.name) : '';
     let cap;
-    if (s.phase === 'pre') cap = `Parked at the Workshop, facing ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)}`;
-    else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off.';
+    if (s.phase === 'pre') cap = `Parked at the loading bay, nose toward ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)} · drag to look around`;
+    else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off, cookies under audit.';
     else if (s.status === 'delivering') cap = `On the rooftops of ${s.at.name} · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km, bearing ${hdg.toFixed(0)}°`;
     else cap = `Heading ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h · ${nextName} ${fmtInt(haversineKm(s, s.next))} km ahead · ${fmtDuration(s.etaMs)}`;
     $('pov-caption').textContent = cap;
@@ -465,7 +491,7 @@
 
   function setView(v) {
     view = v;
-    $('map').toggleAttribute('hidden', v !== 'map'); $('pov').toggleAttribute('hidden', v !== 'pov'); // SVG elements have no .hidden property
+    $('map').toggleAttribute('hidden', v !== 'map'); $('povwrap').toggleAttribute('hidden', v !== 'pov'); // SVG elements have no .hidden property
     $('view-map').classList.toggle('is-on', v === 'map'); $('view-map').setAttribute('aria-pressed', String(v === 'map'));
     $('view-pov').classList.toggle('is-on', v === 'pov'); $('view-pov').setAttribute('aria-pressed', String(v === 'pov'));
     try { localStorage.setItem('santa_view', v); } catch { /* private window etc. */ }
@@ -517,7 +543,7 @@
   const yParam = params.get('y') ? parseInt(params.get('y'), 10) : NaN;
   let savedView = null; try { savedView = localStorage.getItem('santa_view'); } catch { /* ignore */ }
   const wantView = params.get('view') || savedView;
-  if (wantView === 'pov') { view = 'pov'; $('map').toggleAttribute('hidden', true); $('pov').toggleAttribute('hidden', false); $('view-map').classList.remove('is-on'); $('view-pov').classList.add('is-on'); $('view-pov').setAttribute('aria-pressed', 'true'); $('view-map').setAttribute('aria-pressed', 'false'); }
+  if (wantView === 'pov') { view = 'pov'; $('map').toggleAttribute('hidden', true); $('povwrap').toggleAttribute('hidden', false); $('view-map').classList.remove('is-on'); $('view-pov').classList.add('is-on'); $('view-pov').setAttribute('aria-pressed', 'true'); $('view-map').setAttribute('aria-pressed', 'false'); }
   if (!Number.isNaN(tParam)) { applyYear(new Date(tParam).getUTCFullYear()); setMode('preview', tParam); }
   else if (!Number.isNaN(yParam) && yParam !== currentYear) { setYear(yParam); }
   else { applyYear(currentYear); setMode(params.get('mode') === 'preview' ? 'preview' : 'live'); }

@@ -19,12 +19,18 @@ const stripEsm = src => src
 
 const engineJs = stripEsm(read('src/stops.mjs')) + '\n' + stripEsm(read('src/engine.mjs'));
 const uiJs = read('src/ui.js');
+const view3dJs = read('src/three-view.js');
 const styleCss = read('src/style.css');
+// vendored Three.js (MIT); drop the UMD-deprecation console.warn on its first line
+const threeJs = read('vendor/three.min.js').replace(/^console\.warn\([^\n]*\n/, '');
+if (!/THREE/.test(threeJs.slice(0, 2000))) throw new Error('vendor/three.min.js does not look like Three.js');
 
 let html = read('src/template.html')
   .replace('/*__STYLE__*/', () => styleCss)
   .replace('/*__DATA__*/', () => dataJs)
   .replace('/*__ENGINE__*/', () => engineJs)
+  .replace('/*__THREE__*/', () => threeJs)
+  .replace('/*__VIEW3D__*/', () => view3dJs)
   .replace('/*__UI__*/', () => uiJs);
 
 if (/\/\*__[A-Z]+__\*\//.test(html)) throw new Error('unreplaced template token');

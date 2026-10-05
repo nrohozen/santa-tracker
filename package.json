@@ -1,0 +1,12 @@
+{
+  "name": "santa-tracker",
+  "version": "1.0.0",
+  "description": "Santa rides the midnight line: a single-file Santa tracker with a real day/night map and a Christmas Eve preview mode",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "build": "node build.mjs"
+  },
+  "license": "MIT"
+}

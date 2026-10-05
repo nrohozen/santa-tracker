@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Santa Tracker · roho.foo</title>
+<meta name="description" content="Where Santa is right now, and where he will be on Christmas Eve: a sleigh that rides the midnight line around a real day/night map, with a preview mode and a time scrubber.">
+<link rel="canonical" href="https://roho.foo/santa/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="roho.foo">
+<meta property="og:title" content="Santa Tracker">
+<meta property="og:description" content="Santa rides the midnight line. Watch him do it, or preview Christmas Eve any day of the year.">
+<meta property="og:url" content="https://roho.foo/santa/">
+<meta name="theme-color" content="#0b1220">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%85%3C/text%3E%3C/svg%3E">
+<style>
+/*__STYLE__*/
+</style>
+</head>
+<body data-mode="live">
+<header class="top">
+  <div class="brand"><a href="/">roho.foo</a><span class="sep">/</span><span>Santa Tracker</span></div>
+  <div class="modes" role="tablist" aria-label="Tracking mode">
+    <button id="mode-live" class="mode is-on" role="tab" aria-selected="true">Live</button>
+    <button id="mode-preview" class="mode" role="tab" aria-selected="false"><span class="long">Christmas Eve preview</span><span class="short">Dec 24 preview</span></button>
+  </div>
+</header>
+
+<main>
+  <section class="card status">
+    <div class="status-row">
+      <div>
+        <div class="kicker" id="kicker">PRE-FLIGHT</div>
+        <h1 id="headline" aria-live="polite">Santa is at the North Pole</h1>
+        <p class="subline" id="subline">Loading the route…</p>
+      </div>
+      <div class="clocks">
+        <div class="clock"><span class="clock-label" id="clock-utc-label">UTC</span><span class="clock-value" id="clock-utc">--:--</span></div>
+        <div class="clock"><span class="clock-label" id="clock-local-label">Your time</span><span class="clock-value" id="clock-local">--:--</span></div>
+      </div>
+    </div>
+    <p class="hint" id="hint" hidden>Can't wait? Open the <button class="linkish" id="hint-preview">Christmas Eve preview</button> to see the whole flight.</p>
+  </section>
+
+  <section class="card mapcard">
+    <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map showing Santa's position, his route, and the night side of Earth">
+      <defs>
+        <clipPath id="clip"><rect x="0" y="0" width="1000" height="500"/></clipPath>
+        <radialGradient id="halo"><stop offset="0" stop-color="#f5c451" stop-opacity=".9"/><stop offset="1" stop-color="#f5c451" stop-opacity="0"/></radialGradient>
+      </defs>
+      <rect class="ocean" x="0" y="0" width="1000" height="500"/>
+      <g id="land" class="land"/>
+      <g id="graticule" class="graticule"/>
+      <path id="night" class="night" clip-path="url(#clip)"/>
+      <line id="midnight" class="midnight" y1="0" y2="500"/>
+      <path id="route-future" class="route-future"/>
+      <path id="route-past" class="route-past"/>
+      <g id="stops"/>
+      <g id="pole" class="pole"><text x="514" y="30" text-anchor="start">🏠 North Pole</text></g>
+      <g id="sleigh" class="sleigh"><circle class="sleigh-halo" r="22" fill="url(#halo)"/><text class="sleigh-icon" text-anchor="middle" dy=".36em">🎅</text></g>
+    </svg>
+    <div class="legend">
+      <span><i class="sw sw-done"></i> visited</span>
+      <span><i class="sw sw-next"></i> next</span>
+      <span><i class="sw sw-up"></i> upcoming</span>
+      <span><i class="sw sw-night"></i> night (real sun position)</span>
+      <span><i class="sw sw-mid"></i> solar midnight</span>
+    </div>
+  </section>
+
+  <section class="card controls" id="controls" hidden>
+    <div class="ctl-row">
+      <button id="play" class="btn primary" aria-pressed="false">▶ Play</button>
+      <label class="speed">Speed
+        <select id="speed">
+          <option value="60">1 min / s</option>
+          <option value="600" selected>10 min / s</option>
+          <option value="1800">30 min / s</option>
+          <option value="3600">1 h / s</option>
+        </select>
+      </label>
+      <button id="jump-now" class="btn" title="Put the clock at today's time of day, on Christmas Eve">Now, on Christmas Eve</button>
+      <button id="jump-me" class="btn" title="Jump to when Santa reaches your time zone">My midnight</button>
+      <button id="jump-start" class="btn" title="Back to launch">⏮ Launch</button>
+    </div>
+    <input type="range" id="scrub" min="0" max="1" step="60000" value="0" aria-label="Simulated time">
+    <div class="scrub-labels">
+      <span id="scrub-min">Launch</span>
+      <span id="scrub-time" class="mono">—</span>
+      <span id="scrub-max">Home</span>
+    </div>
+    <p class="hint">Space plays and pauses, arrow keys nudge ten minutes. Share this exact moment: <a id="permalink" href="#" class="mono">?t=…</a></p>
+  </section>
+
+  <section class="tiles" aria-label="Telemetry">
+    <div class="tile"><div class="label">Presents delivered</div><div class="value" id="t-presents">0</div><div class="sub" id="t-presents-sub"></div></div>
+    <div class="tile"><div class="label">Stops</div><div class="value" id="t-stops">0</div><div class="sub" id="t-stops-sub"></div></div>
+    <div class="tile"><div class="label">Distance flown</div><div class="value" id="t-km">0 km</div><div class="sub" id="t-km-sub"></div></div>
+    <div class="tile"><div class="label">Ground speed</div><div class="value" id="t-speed">0</div><div class="sub" id="t-speed-sub"></div></div>
+    <div class="tile"><div class="label">Next stop</div><div class="value small" id="t-next">—</div><div class="sub" id="t-next-sub"></div></div>
+    <div class="tile"><div class="label" id="t-you-label">Your time zone</div><div class="value small" id="t-you">—</div><div class="sub" id="t-you-sub"></div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Sleigh systems</h2>
+      <dl class="systems">
+        <div><dt>Altitude</dt><dd id="s-alt">—</dd></div>
+        <div><dt>Lead reindeer</dt><dd id="s-lead">—</dd></div>
+        <div><dt>Cookies</dt><dd id="s-cookies">—</dd></div>
+        <div><dt>Milk</dt><dd id="s-milk">—</dd></div>
+        <div class="wide"><dt>Sack</dt><dd><div class="bar"><div class="bar-fill" id="s-sack-bar"></div></div><span id="s-sack">100% full</span></dd></div>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>Mission log</h2>
+      <ol class="log" id="log"><li class="muted">Nothing yet. The elves are still wrapping.</li></ol>
+    </div>
+  </section>
+
+  <details class="card how">
+    <summary>How this works</summary>
+    <div class="how-body">
+      <p><strong>The route.</strong> Santa delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are visited in a north–south serpentine spread across that zone's hour, with at most six minutes per city. Between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>The shading is real.</strong> The dark side of the map is computed from the actual position of the sun for the instant on the clock (its declination and the subsolar point), so in December the whole Arctic is in polar night. The dashed line is solar midnight. Santa stays within a couple of hours of it all night, and the gap you see is the difference between the sun and the time zones people actually chose.</p>
+      <p><strong>Preview mode</strong> is the same code with a simulated clock. Nothing else changes, so what you see in the preview is exactly what the live tracker will show on the night. A <code>?t=</code> parameter in the address deep-links any instant.</p>
+      <p><strong>The numbers.</strong> Presents are a quarter of each metro population. Altitude, cookies and the lead reindeer are derived from the clock, so they are the same for everyone looking at the same moment. The rest is theatre.</p>
+      <p><strong>Privacy.</strong> This page makes no network requests after it loads: the map, the route and the sun are all computed here in your browser. "Your time zone" comes from your browser's clock and never leaves it.</p>
+      <p>Source: <a href="https://github.com/nrohozen/santa-tracker">github.com/nrohozen/santa-tracker</a> (MIT).</p>
+    </div>
+  </details>
+</main>
+
+<footer class="foot">
+  <span>© <span id="foot-year"></span> Nicholas Rohozen · <a href="/">roho.foo</a></span>
+  <span><a href="https://github.com/nrohozen/santa-tracker">source</a> · built for a quarterly "build it with AI" challenge</span>
+</footer>
+
+<script>
+/*__DATA__*/
+/*__ENGINE__*/
+/*__UI__*/
+</script>
+</body>
+</html>

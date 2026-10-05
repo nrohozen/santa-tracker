@@ -8,59 +8,104 @@
   const el = (tag, attrs = {}) => { const n = document.createElementNS(SVG, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
   const rad = d => d * Math.PI / 180;
 
-  // ---------- Santa's view: an orthographic globe centred on the sleigh, north up ----------
-  const PR = 560, PCX = 500, PCY = 250; // globe radius and centre inside the 1000×500 box
-  function ortho(c, p) {
-    const la = rad(p.lat), lo = rad(p.lon - c.lon), la0 = rad(c.lat);
-    const x = Math.cos(la) * Math.sin(lo);
-    const y = Math.cos(la0) * Math.sin(la) - Math.sin(la0) * Math.cos(la) * Math.cos(lo);
-    const z = Math.sin(la0) * Math.sin(la) + Math.cos(la0) * Math.cos(la) * Math.cos(lo);
-    return { x: PCX + PR * x, y: PCY - PR * y, vis: z > 0 };
-  }
-  const clampRim = q => { const dx = q.x - PCX, dy = q.y - PCY, L = Math.hypot(dx, dy) || 1; return { x: PCX + dx / L * PR, y: PCY + dy / L * PR }; };
-  const pt = q => q.x.toFixed(1) + ' ' + q.y.toFixed(1);
-  // Polygons as rings of [lon, lat]. Hidden vertices are pushed to the horizon so partly visible shapes still fill.
-  function orthoRings(c, polys) {
-    let d = '';
-    for (const poly of polys) for (const ring of poly) {
-      let any = false, s = '';
-      ring.forEach(([lon, lat], i) => { const q = ortho(c, { lat, lon }); any = any || q.vis; s += (i ? 'L' : 'M') + pt(q.vis ? q : clampRim(q)); });
-      if (any) d += s + 'Z';
-    }
-    return d;
-  }
-  function orthoLine(c, pts) {
-    let d = '', pen = false;
-    for (const p of pts) { const q = ortho(c, p); if (!q.vis) { pen = false; continue; } d += (pen ? 'L' : 'M') + pt(q); pen = true; }
-    return d;
-  }
+  // ---------- From the sleigh: a perspective chase camera just behind Santa, looking along his heading ----------
+  const EARTH_KM = 6371;
+  const FP = { altKm: 420, pitch: 36, fov: 90, near: 0.003 }; // camera height, degrees looking down, horizontal field of view, near plane (Earth radii)
+  const PCX = 500, PCY = 250;
   const toVec = p => { const la = rad(p.lat), lo = rad(p.lon); return [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)]; };
-  const fromVec = ([x, y, z]) => ({ lat: Math.atan2(z, Math.hypot(x, y)) * 180 / Math.PI, lon: Math.atan2(y, x) * 180 / Math.PI });
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const norm = a => { const L = Math.hypot(...a); return [a[0] / L, a[1] / L, a[2] / L]; };
-  // The night side as seen from c. The terminator is the great circle 90° from the sun; with hidden
-  // vertices clamped to the horizon, the polygon is the visible night when the night's centre is in
-  // view and the visible day otherwise, in which case we take the complement (evenodd with the disk).
-  function orthoNight(c, sun) {
-    const S = toVec(sun);
-    let u = cross(S, [0, 0, 1]); u = Math.hypot(...u) < 1e-6 ? [1, 0, 0] : norm(u);
-    const v = cross(S, u);
-    let d = '';
-    for (let a = 0; a <= 360; a += 2) {
-      const r = rad(a), p = fromVec([Math.cos(r) * u[0] + Math.sin(r) * v[0], Math.cos(r) * u[1] + Math.sin(r) * v[1], Math.cos(r) * u[2] + Math.sin(r) * v[2]]);
-      const q = ortho(c, p); d += (a ? 'L' : 'M') + pt(q.vis ? q : clampRim(q));
+  const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const norm = a => { const L = Math.hypot(...a) || 1; return [a[0] / L, a[1] / L, a[2] / L]; };
+  const mix = (a, b, ka, kb) => [ka * a[0] + kb * b[0], ka * a[1] + kb * b[1], ka * a[2] + kb * b[2]];
+  function fpCamera(s) {
+    const here = s.lat > 89.99 ? { lat: 89.99, lon: s.next ? s.next.lon : 0 } : s;
+    const p = toVec(here);
+    const hdg = rad(s.next ? bearing(here, s.next) : 0);
+    let east = cross([0, 0, 1], p); east = Math.hypot(...east) < 1e-6 ? [1, 0, 0] : norm(east);
+    const north = cross(p, east);
+    const horiz = mix(north, east, Math.cos(hdg), Math.sin(hdg));
+    const ph = rad(FP.pitch);
+    const f = norm(mix(horiz, p, Math.cos(ph), -Math.sin(ph)));
+    const right = norm(cross(f, p));
+    const up = cross(right, f);
+    const k = 1 + FP.altKm / EARTH_KM;
+    const horizonCos = 1 / k;
+    return { p, east, north, C: p.map(v => v * k), f, right, up, horizonCos, horizonAng: Math.acos(horizonCos), fl: (W / 2) / Math.tan(rad(FP.fov) / 2) };
+  }
+  // Unit vector on the sphere → camera space [right, up, forward, visible]. Points beyond the horizon slide
+  // along the great circle toward the nadir until they sit on the horizon, so shapes that cross it still fill.
+  function fpCam(cam, X, clamp = true) {
+    const d0 = dot3(X, cam.p);
+    const visible = d0 >= cam.horizonCos;
+    if (!visible && clamp) {
+      const a = Math.acos(Math.max(-1, Math.min(1, d0))), b = cam.horizonAng, sa = Math.sin(a);
+      if (sa > 1e-9) X = mix(cam.p, X, Math.sin(a - b) / sa, Math.sin(b) / sa);
     }
-    d += 'Z';
-    const anti = { lat: -sun.lat, lon: wrapLon(sun.lon + 180) };
-    if (!ortho(c, anti).vis) d += `M${PCX - PR} ${PCY}a${PR} ${PR} 0 1 0 ${2 * PR} 0a${PR} ${PR} 0 1 0 ${-2 * PR} 0Z`;
+    const d = [X[0] - cam.C[0], X[1] - cam.C[1], X[2] - cam.C[2]];
+    return [dot3(d, cam.right), dot3(d, cam.up), dot3(d, cam.f), visible];
+  }
+  const fpDir = (cam, D) => [dot3(D, cam.right), dot3(D, cam.up), dot3(D, cam.f)]; // a direction at infinity (sun, stars)
+  const fpProj = (cam, q) => [PCX + cam.fl * q[0] / q[2], PCY - cam.fl * q[1] / q[2]];
+  function clipNear(pts, near) { // Sutherland–Hodgman against the plane forward = near
+    const out = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const ain = a[2] > near, bin = b[2] > near;
+      if (ain) out.push(a);
+      if (ain !== bin) { const t = (near - a[2]) / (b[2] - a[2]); out.push([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), near]); }
+    }
+    return out;
+  }
+  const fpRingPath = (cam, vecs) => { // ring of unit vectors already inside the horizon → projected path (near-clipped)
+    const pts = clipNear(vecs.map(v => fpCam(cam, v, false)), FP.near);
+    if (pts.length < 3) return '';
+    return pts.map((q, i) => (i ? 'L' : 'M') + fpProj(cam, q).map(n => n.toFixed(1)).join(' ')).join('') + 'Z';
+  };
+  // Azimuthal-equidistant coordinates around the nadir (ground distance + bearing): a flat map on which the
+  // horizon is a circle, so a landmass can be clipped to it with Sutherland–Hodgman against a 48-gon.
+  const toAz = (cam, X) => { const c = Math.acos(Math.max(-1, Math.min(1, dot3(X, cam.p)))); const az = Math.atan2(dot3(X, cam.east), dot3(X, cam.north)); return [c * Math.sin(az), c * Math.cos(az)]; };
+  const fromAz = (cam, [x, y]) => { const c = Math.hypot(x, y); if (c < 1e-12) return cam.p; const az = Math.atan2(x, y); return mix(cam.p, mix(cam.east, cam.north, Math.sin(az), Math.cos(az)), Math.cos(c), Math.sin(c)); };
+  const CLIP_DIRS = Array.from({ length: 48 }, (_, i) => { const a = 2 * Math.PI * i / 48; return [Math.cos(a), Math.sin(a)]; });
+  function clipToHorizon(pts2, r) {
+    let poly = pts2;
+    for (const [nx, ny] of CLIP_DIRS) {
+      if (poly.length < 3) return [];
+      const out = [];
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length];
+        const da = r - (a[0] * nx + a[1] * ny), db = r - (b[0] * nx + b[1] * ny);
+        if (da >= 0) out.push(a);
+        if ((da >= 0) !== (db >= 0)) { const t = da / (da - db); out.push([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]); }
+      }
+      poly = out;
+    }
+    return poly;
+  }
+  const fpGroundRing = (cam, vecs) => { // ring of unit vectors → projected path of the part inside the horizon
+    const clipped = clipToHorizon(vecs.map(v => toAz(cam, v)), cam.horizonAng);
+    if (clipped.length < 3) return '';
+    return fpRingPath(cam, clipped.map(q => fromAz(cam, q)));
+  };
+  const pipLonLat = (lon, lat, ring) => { // even-odd point in polygon on the plain lon/lat ring
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  function fpPolyline(cam, pts) { // open line of {lat,lon}: breaks where hidden or behind the camera
+    let d = '', pen = false;
+    for (const p of pts) {
+      const q = fpCam(cam, toVec(p), false);
+      if (!q[3] || q[2] <= FP.near) { pen = false; continue; }
+      d += (pen ? 'L' : 'M') + fpProj(cam, q).map(n => n.toFixed(1)).join(' '); pen = true;
+    }
     return d;
   }
-  const graticuleLines = (() => {
-    const lines = [];
-    for (let lon = -180; lon < 180; lon += 30) { const l = []; for (let lat = -90; lat <= 90; lat += 5) l.push({ lat, lon }); lines.push(l); }
-    for (let lat = -60; lat <= 60; lat += 30) { const l = []; for (let lon = -180; lon <= 180; lon += 5) l.push({ lat, lon }); lines.push(l); }
-    return lines;
-  })();
+  const circleVecs = (center, e1, e2, ang, step = 3) => { const out = []; for (let a = 0; a < 360; a += step) { const t = rad(a); out.push(mix(center, mix(e1, e2, Math.cos(t), Math.sin(t)), Math.cos(ang), Math.sin(ang))); } return out; };
+  const STARS = (() => { const r = mulberry32(0x5A17A), out = []; for (let i = 0; i < 260; i++) { const z = r() * 2 - 1, th = r() * 2 * Math.PI, sz = Math.sqrt(1 - z * z); out.push({ v: [sz * Math.cos(th), sz * Math.sin(th), z], m: r() }); } return out; })();
+  const compass = h => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(h / 45) % 8];
 
   // ---------- years + routes ----------
   const currentYear = missionYear(new Date());
@@ -92,6 +137,7 @@
   };
 
   const landPolys = decodeTopo(LAND_TOPO, 'land');
+  const landVecs = landPolys.map(poly => poly.map(ring => ring.map(([lon, lat]) => toVec({ lat, lon }))));
   $('land').appendChild(el('path', { id: 'land-path', d: ringsToPath(landPolys), 'fill-rule': 'evenodd' }));
   const grat = $('graticule');
   for (let lon = -150; lon <= 150; lon += 30) grat.appendChild(el('line', { x1: px({ lat: 0, lon })[0], x2: px({ lat: 0, lon })[0], y1: 0, y2: H }));
@@ -122,12 +168,11 @@
       const c = el('circle', { cx: cx.toFixed(1), cy: cy.toFixed(1), class: 'stop' });
       const title = el('title'); title.textContent = label; c.appendChild(title);
       g.appendChild(c); stopEls.push([w, c]);
-      const pc = el('circle', { class: 'stop', visibility: 'hidden' });
+      const pc = el('circle', { class: 'light', visibility: 'hidden' });
       const pTitle = el('title'); pTitle.textContent = label; pc.appendChild(pTitle);
       pg.appendChild(pc); povStopEls.push([w, pc]);
     }
     fullTrack = track(route, route.launch, route.home);
-    $('route-future').setAttribute('d', polyline(fullTrack));
     $('scrub').min = route.launch; $('scrub').max = route.home; $('scrub').value = route.launch;
     $('scrub-min').textContent = `Launch · ${utcStamp(route.launch)}`;
     $('scrub-max').textContent = `Home · ${utcStamp(route.home)}`;
@@ -328,11 +373,13 @@
     }
   }
 
+  const TRAIL_STEPS = [0.85, 0.6, 0.4, 0.25, 0.12]; // opacity per 30-minute slice behind the sleigh
+  const trailEls = TRAIL_STEPS.map(o => { const p = el('path', { class: 'trail', opacity: o }); $('trail').appendChild(p); return p; });
   function renderMap(s, t) {
     $('night').setAttribute('d', polyline(nightPolygon(s.sun)) + 'Z');
     const mx = px({ lat: 0, lon: s.midnightLon })[0];
     $('midnight').setAttribute('x1', mx); $('midnight').setAttribute('x2', mx);
-    $('route-past').setAttribute('d', s.phase === 'flight' ? polyline(track(route, route.launch, t)) : '');
+    trailEls.forEach((p, k) => p.setAttribute('d', s.phase === 'flight' ? polyline(track(route, t - (k + 1) * 30 * MIN, t - k * 30 * MIN)) : ''));
     const [sx, sy] = px(s);
     $('sleigh').setAttribute('transform', `translate(${sx.toFixed(1)} ${Math.max(16, sy).toFixed(1)})`);
     for (const [w, c] of stopEls) {
@@ -342,42 +389,83 @@
   }
 
   function renderPov(s, t, tel) {
-    const c = { lat: s.lat, lon: s.lat > 89.99 ? 0 : s.lon };
-    $('pov-land').setAttribute('d', orthoRings(c, landPolys));
-    $('pov-grat').setAttribute('d', graticuleLines.map(l => orthoLine(c, l)).join(''));
-    $('pov-night').setAttribute('d', orthoNight(c, s.sun));
-    const mer = []; for (let lat = -90; lat <= 90; lat += 3) mer.push({ lat, lon: s.midnightLon });
-    $('pov-midnight').setAttribute('d', orthoLine(c, mer));
-    $('pov-future').setAttribute('d', orthoLine(c, fullTrack));
-    $('pov-past').setAttribute('d', s.phase === 'flight' ? orthoLine(c, track(route, route.launch, t)) : '');
-    const home = ortho(c, { lat: 89.5, lon: c.lon }); // the Workshop sits on the pole; show it when it is over the horizon
-    $('pov-home').setAttribute('visibility', home.vis ? 'visible' : 'hidden');
-    $('pov-home').setAttribute('transform', `translate(${home.x.toFixed(1)} ${home.y.toFixed(1)})`);
+    const cam = fpCamera(s);
+    // sky: stars and the sun are directions at infinity; the ground is drawn over them
+    let stars = '';
+    for (const st of STARS) {
+      const q = fpDir(cam, st.v); if (q[2] <= 0.05) continue;
+      const [x, y] = fpProj(cam, q); if (x < -20 || x > W + 20 || y < -20 || y > H + 20) continue;
+      const r = 0.6 + st.m * 1.2;
+      stars += `M${x.toFixed(1)} ${y.toFixed(1)}m-${r} 0a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
+    }
+    $('fp-stars').setAttribute('d', stars);
+    const sunQ = fpDir(cam, toVec(s.sun));
+    const sunUp = sunQ[2] > 0.02;
+    $('fp-sun').setAttribute('visibility', sunUp ? 'visible' : 'hidden');
+    if (sunUp) { const [x, y] = fpProj(cam, sunQ); $('fp-sun').setAttribute('cx', x.toFixed(1)); $('fp-sun').setAttribute('cy', y.toFixed(1)); }
+    // the ground is everything inside the horizon circle
+    const groundD = fpRingPath(cam, circleVecs(cam.p, cam.east, cam.north, cam.horizonAng, 2));
+    $('fp-ground').setAttribute('d', groundD); $('fp-ground-clip').setAttribute('d', groundD); $('fp-horizon').setAttribute('d', groundD);
+    // land: rings with a vertex inside the horizon are clipped to it; a ring with none but containing the
+    // nadir means the whole view is inland, so it contributes the entire ground (even-odd handles holes)
+    const here = s.lat > 89.99 ? { lat: 89.99, lon: 0 } : s;
+    let land = '';
+    landPolys.forEach((poly, pi) => poly.forEach((ring, ri) => {
+      const vecs = landVecs[pi][ri];
+      if (vecs.some(v => dot3(v, cam.p) >= cam.horizonCos)) land += fpGroundRing(cam, vecs);
+      else if (pipLonLat(here.lon, here.lat, ring)) land += groundD;
+    }));
+    $('fp-land').setAttribute('d', land);
+    // a faint 5° ground grid gives the curvature and the sense of speed
+    let grid = '';
+    const la0 = Math.round(here.lat / 5) * 5, lo0 = Math.round(here.lon / 5) * 5;
+    for (let lon = lo0 - 30; lon <= lo0 + 30; lon += 5) { const line = []; for (let lat = Math.max(-90, la0 - 25); lat <= Math.min(90, la0 + 25); lat += 1) line.push({ lat, lon }); grid += fpPolyline(cam, line); }
+    for (let lat = Math.max(-85, la0 - 25); lat <= Math.min(85, la0 + 25); lat += 5) { const line = []; for (let lon = lo0 - 30; lon <= lo0 + 30; lon += 1) line.push({ lat, lon }); grid += fpPolyline(cam, line); }
+    $('fp-grid').setAttribute('d', grid);
+    // night: the terminator is the great circle 90° from the sun. Clipped to the horizon it bounds the part of
+    // the ground on the nadir's side of the line, so it is the night when the nadir is in night, else the day.
+    const S = toVec(s.sun);
+    let u = cross(S, [0, 0, 1]); u = Math.hypot(...u) < 1e-6 ? [1, 0, 0] : norm(u);
+    let night = fpGroundRing(cam, circleVecs(S, u, cross(S, u), Math.PI / 2, 2));
+    if (dot3(S, cam.p) >= 0) night += groundD;
+    $('fp-night').setAttribute('d', night);
+    $('fp-route').setAttribute('d', s.phase === 'done' ? '' : fpPolyline(cam, fullTrack));
+    // city lights
     for (const [w, ce] of povStopEls) {
-      const q = ortho(c, w);
-      ce.setAttribute('visibility', q.vis ? 'visible' : 'hidden');
-      if (q.vis) { ce.setAttribute('cx', q.x.toFixed(1)); ce.setAttribute('cy', q.y.toFixed(1)); }
+      const q = fpCam(cam, toVec(w), false);
+      const ok = q[3] && q[2] > FP.near;
+      ce.setAttribute('visibility', ok ? 'visible' : 'hidden');
+      if (ok) { const [x, y] = fpProj(cam, q); ce.setAttribute('cx', x.toFixed(1)); ce.setAttribute('cy', y.toFixed(1)); ce.setAttribute('r', Math.min(9, Math.max(1.6, 0.45 / q[2])).toFixed(1)); }
       ce.classList.toggle('done', w.depart <= t || s.phase === 'done');
       ce.classList.toggle('next', s.phase === 'flight' && s.next === w);
     }
+    const lab = $('fp-next-label');
+    let labOk = false;
+    if (s.next && !s.next.pole) {
+      const q = fpCam(cam, toVec(s.next), false);
+      if (q[3] && q[2] > FP.near) {
+        const [x, y] = fpProj(cam, q);
+        lab.setAttribute('x', x.toFixed(1)); lab.setAttribute('y', (y - 10).toFixed(1));
+        lab.textContent = `${s.next.name} · ${fmtInt(haversineKm(s, s.next))} km`; labOk = true;
+      }
+    }
+    lab.setAttribute('visibility', labOk ? 'visible' : 'hidden');
+    // HUD
     const hdg = s.next ? bearing(s, s.next) : 0;
-    const flying = s.phase === 'flight' && s.status === 'enroute';
-    $('pov-heading').setAttribute('transform', `rotate(${hdg.toFixed(0)})`);
-    $('pov-heading').setAttribute('visibility', flying ? 'visible' : 'hidden');
     const nextName = s.next ? (s.next.pole ? 'the Workshop' : s.next.name) : '';
-    const nextKm = s.next ? `${fmtInt(haversineKm(s, s.next))} km` : '';
     let cap;
-    if (s.phase === 'pre') cap = `Over the Workshop · ${fmtDuration(s.untilLaunchMs)} to launch · first stop ${s.next.name}, ${nextKm} due south`;
-    else if (s.phase === 'done') cap = 'Home. Looking down at the Workshop; the lights are off.';
-    else if (s.status === 'delivering') cap = `On the rooftops of ${s.at.name} · next ${nextName}, ${nextKm}, bearing ${hdg.toFixed(0)}°`;
-    else cap = `Heading ${hdg.toFixed(0)}° at ${fmtInt(tel.altitudeM)} m · ${nextName} ${nextKm} ahead · ${fmtInt(s.speedKmh)} km/h`;
+    if (s.phase === 'pre') cap = `Parked at the Workshop, facing ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)}`;
+    else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off.';
+    else if (s.status === 'delivering') cap = `On the rooftops of ${s.at.name} · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km, bearing ${hdg.toFixed(0)}°`;
+    else cap = `Heading ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h · ${nextName} ${fmtInt(haversineKm(s, s.next))} km ahead · ${fmtDuration(s.etaMs)}`;
     $('pov-caption').textContent = cap;
     $('pov-coords').textContent = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
+    $('fp-nose').setAttribute('visibility', s.phase === 'flight' ? 'visible' : 'hidden');
   }
 
   function setView(v) {
     view = v;
-    $('map').hidden = v !== 'map'; $('pov').hidden = v !== 'pov';
+    $('map').toggleAttribute('hidden', v !== 'map'); $('pov').toggleAttribute('hidden', v !== 'pov'); // SVG elements have no .hidden property
     $('view-map').classList.toggle('is-on', v === 'map'); $('view-map').setAttribute('aria-pressed', String(v === 'map'));
     $('view-pov').classList.toggle('is-on', v === 'pov'); $('view-pov').setAttribute('aria-pressed', String(v === 'pov'));
     try { localStorage.setItem('santa_view', v); } catch { /* private window etc. */ }
@@ -429,7 +517,7 @@
   const yParam = params.get('y') ? parseInt(params.get('y'), 10) : NaN;
   let savedView = null; try { savedView = localStorage.getItem('santa_view'); } catch { /* ignore */ }
   const wantView = params.get('view') || savedView;
-  if (wantView === 'pov') { view = 'pov'; $('map').hidden = true; $('pov').hidden = false; $('view-map').classList.remove('is-on'); $('view-pov').classList.add('is-on'); $('view-pov').setAttribute('aria-pressed', 'true'); $('view-map').setAttribute('aria-pressed', 'false'); }
+  if (wantView === 'pov') { view = 'pov'; $('map').toggleAttribute('hidden', true); $('pov').toggleAttribute('hidden', false); $('view-map').classList.remove('is-on'); $('view-pov').classList.add('is-on'); $('view-pov').setAttribute('aria-pressed', 'true'); $('view-map').setAttribute('aria-pressed', 'false'); }
   if (!Number.isNaN(tParam)) { applyYear(new Date(tParam).getUTCFullYear()); setMode('preview', tParam); }
   else if (!Number.isNaN(yParam) && yParam !== currentYear) { setYear(yParam); }
   else { applyYear(currentYear); setMode(params.get('mode') === 'preview' ? 'preview' : 'live'); }

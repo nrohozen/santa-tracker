@@ -68,16 +68,24 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 .views { display: flex; gap: 6px; padding: 0 2px 8px; flex-wrap: wrap; }
 .chip { background: var(--card-2); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: .9rem; }
 .chip.is-on { color: var(--text); border-color: var(--gold); background: #1d2742; }
-#pov { display: block; width: 100%; height: auto; border-radius: 8px; background: #05080f; }
-.space { fill: #05080f; }
-.pov-land { fill: var(--land); stroke: var(--land-edge); stroke-width: .6; }
-.pov-grat { fill: none; stroke: #fff; stroke-opacity: .06; stroke-width: .7; }
-.pov .stop { r: 3.2; }
-.pov .stop.next { r: 4.6; }
-.pov .pole text { font-size: 16px; }
-.heading { fill: var(--gold); }
-.heading-line { stroke: var(--gold); stroke-width: 2; }
-.pov-n { font-size: 11px; fill: var(--muted); font-family: var(--mono); }
+#pov { display: block; width: 100%; height: auto; border-radius: 8px; background: #02040a; }
+#map[hidden], #pov[hidden] { display: none; }
+.stars { fill: #fff; fill-opacity: .85; }
+.fp-horizon { fill: none; stroke: #8fc1ff; stroke-opacity: .5; stroke-width: 8; filter: blur(3px); }
+.pov-land { fill: #2f4b6e; stroke: #4e76a8; stroke-width: .8; }
+.fp-grid { fill: none; stroke: #fff; stroke-opacity: .07; stroke-width: .7; }
+#fp-ground { fill: #060d1b; }
+.route-ahead { fill: none; stroke: var(--gold); stroke-opacity: .5; stroke-width: 1.2; stroke-dasharray: 3 5; }
+.light { fill: #fff; fill-opacity: .35; }
+.light.done { fill: var(--gold); fill-opacity: 1; filter: drop-shadow(0 0 3px var(--gold)); }
+.light.next { fill: var(--red); fill-opacity: 1; filter: drop-shadow(0 0 4px var(--red)); }
+.fp-label { font-size: 12px; fill: #fff; paint-order: stroke; stroke: #02040a; stroke-width: 3px; stroke-linejoin: round; }
+.team text { user-select: none; }
+.nose { fill: #ff3b30; filter: drop-shadow(0 0 4px #ff3b30); animation: nose 1.2s ease-in-out infinite; }
+@keyframes nose { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .nose { animation: none; } }
+.dash { fill: #2a1a0e; stroke: #6a4424; stroke-width: 2; }
+.pov-n { font-size: 11px; fill: var(--muted); font-family: var(--mono); letter-spacing: .14em; }
 .pov-caption { font-size: 13px; fill: #e6ecf5; paint-order: stroke; stroke: #05080f; stroke-width: 3px; stroke-linejoin: round; }
 #map { display: block; width: 100%; height: auto; border-radius: 8px; background: var(--ocean); }
 .ocean { fill: var(--ocean); }
@@ -85,11 +93,12 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 .graticule line { stroke: #ffffff; stroke-opacity: .05; stroke-width: .7; }
 .night { fill: #000; fill-opacity: .42; pointer-events: none; }
 .midnight { fill: none; stroke: var(--gold); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 4; }
-.route-future { fill: none; stroke: #ffffff; stroke-opacity: .22; stroke-width: 1; stroke-dasharray: 3 4; }
-.route-past { fill: none; stroke: var(--gold); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
-.stop { fill: #ffffff; fill-opacity: .35; stroke: none; r: 2.3; }
-.stop.done { fill: var(--green); fill-opacity: 1; }
-.stop.next { fill: var(--red); fill-opacity: 1; r: 3.4; }
+.trail { fill: none; stroke: var(--gold); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.stop { fill: #ffffff; fill-opacity: .3; stroke: none; r: 2.1; }
+.stop.done { fill: var(--green); fill-opacity: 1; r: 2.8; filter: drop-shadow(0 0 2px rgba(61, 220, 132, .9)); animation: pop .6s ease-out; }
+.stop.next { fill: var(--red); fill-opacity: 1; r: 3.6; filter: drop-shadow(0 0 3px rgba(229, 72, 77, .9)); }
+@keyframes pop { from { r: 8; fill-opacity: .2; } to { r: 2.8; fill-opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stop.done { animation: none; } }
 .stop:hover { fill-opacity: 1; r: 4; }
 .pole text { font-size: 11px; fill: var(--muted); }
 .sleigh-icon { font-size: 22px; }

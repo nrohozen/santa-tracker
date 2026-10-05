@@ -21,11 +21,19 @@ the year, where it will be on Christmas Eve. Live at **https://roho.foo/santa/**
   midnight* (jump to when Santa reaches your time zone). Any instant can be
   deep-linked with `?t=2026-12-24T18:00Z`.
 - **Two views.** *Mission control* is the whole world on an equirectangular
-  map. *Santa's view* is an orthographic globe centred on the sleigh, north
-  up: Santa stays in the middle, the world turns under him, a gold arrow is
-  his heading to the next stop, and the night side, the solar-midnight line,
-  the route and the stops are all drawn on the sphere. The choice sticks
-  (`localStorage`) and `?view=pov` deep-links it.
+  map: a short fading tail behind the sleigh and every delivered city lit
+  green, so the picture fills up as the night goes on. *From the sleigh* is a
+  first-person chase camera a little above and behind Santa, looking along
+  his heading: a true perspective projection of the globe (camera 420 km up,
+  pitched 36° down, 90° field of view), so the horizon curves, the stars and
+  the sun sit where they should, the night side is drawn on the ground, the
+  next cities appear as lights that grow as he closes in, the route ahead is
+  dotted on the ground, and the reindeer team is in the foreground with
+  Rudolph's nose on. Coastlines are clipped to the horizon properly (an
+  azimuthal projection around the nadir, Sutherland–Hodgman against the
+  horizon circle, then a near-plane clip), including the case where the whole
+  view is inland. The choice sticks (`localStorage`) and `?view=pov`
+  deep-links it.
 - **Efficient routes.** Santa is all about efficiency. Inside each time zone
   the order is a travelling-salesman plan: nearest-neighbour tours from the
   cities closest to where the sleigh is coming from, polished with 2-opt

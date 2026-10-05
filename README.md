@@ -28,22 +28,45 @@ the year, where it will be on Christmas Eve. Live at **https://roho.foo/santa/**
   (computed from your browser's clock, using the December offset rather than
   today's), plus altitude, lead reindeer, cookie and milk intake, sack level,
   and a mission log with one deadpan note per city.
+- **Every country.** 252 stops in 197 countries and territories: every country
+  where someone is waiting up, one city each where only a capital was missing
+  (Bethlehem stands in for Palestine, and yes, Vatican City gets a stop). Ten
+  countries are left to sleep because public Christmas celebration there is
+  banned or essentially absent; the list and the reason for each line are in
+  `src/stops.mjs` (`SKIPPED`), where they can be argued with.
+- **Flight archive.** The last ten Christmases, 2016 to 2026, as clickable
+  mini-maps. Each year's plan is seeded by the year, so Santa never flies the
+  same scribble twice and 2019 looks the same for everyone, forever. The stop
+  list also carries real time-zone history (below), so when a country moved
+  its clocks, its place in that year's route moved too. Past years render in
+  the past tense with that year's real sun.
 - **Self-contained and private.** One HTML file, no external requests after
   load, no analytics, no geolocation.
 
 ## How the route works
 
 Santa delivers at local midnight, so he must sweep westward one time zone per
-hour. The 157 cities are grouped by their UTC offset on December 24 (standard
-time in the north, summer time where the south observes it, with 2024's
-Kazakhstan and Paraguay changes applied). Zones run from UTC+14 (Kiritimati,
-10:00 UTC Dec 24) to UTC−11 (Pago Pago and Niue, 11:00 UTC Dec 25). Inside a
-zone the cities are visited in a north–south serpentine spread across that
-zone's hour, so every city is reached within 30 minutes of its midnight;
-adjacent zones alternate direction so the path does not jump pole to pole.
-Dwell per city is 30 % of the gap to the next one, capped at six minutes; in
-between, the sleigh flies the great circle. Launch is one hour before the first
-stop, home one hour after the last: 09:00 UTC Dec 24 to 12:15 UTC Dec 25.
+hour. The cities are grouped by their UTC offset on December 24 of the flight's
+year (standard time in the north, summer time where the south observes it).
+Zones run from UTC+14 (Kiritimati, 10:00 UTC Dec 24) to UTC−11 (Pago Pago and
+Niue, 11:00 UTC Dec 25). Inside a zone the cities are spread evenly across that
+zone's hour, so every city is reached within 30 minutes of its midnight; the
+*order* inside the zone is the year's plan, drawn per zone from a seeded PRNG
+(`hash32(year, zoneIndex)` → mulberry32): a nearest-neighbour tour starting
+from the city closest to where Santa just was, or a north–south, south–north
+or east–west sweep. Dwell per city is 30 % of the gap to the next one, capped
+at six minutes; in between, the sleigh flies the great circle. Launch is one
+hour before the first stop, home one hour after the last.
+
+**Time-zone history** (`TZ_HISTORY` in `src/engine.mjs`): Samoa observed
+summer time through 2020 (UTC+14 on Christmas Eve), Tonga tried it once in
+2016, Fiji kept it through 2021, Brazil's summer time ended with 2018 (São
+Paulo, Rio, Brasília on UTC−2 before that), Morocco was UTC+0 in winter
+through 2017, Sudan was UTC+3 through 2016 and South Sudan through 2020,
+Jordan and Syria changed their clocks through 2021 (UTC+2 in December),
+Greenland was UTC−3 through 2022, and Kazakhstan's Almaty was UTC+6 through
+2023. `routeChanges(year)` reports what moved versus the year before and the
+page prints it under the archive.
 
 The sun is the low-precision USNO algorithm (declination and subsolar point
 from days since J2000, good to a hundredth of a degree). The terminator at
@@ -57,9 +80,9 @@ clock. The year rolls over to the next Christmas once the sleigh is home.
 ## Layout
 
 ```
-src/stops.mjs     157 cities: lat, lon, UTC offset on Dec 24, metro population
-src/engine.mjs    pure engine: route, position at time t, sun/terminator, telemetry, log, TopoJSON decoder
-src/ui.js         DOM + SVG rendering, modes, scrubber, keyboard, ?t= deep links
+src/stops.mjs     252 cities (197 countries): lat, lon, UTC offset on Dec 24, metro population; SKIPPED list
+src/engine.mjs    pure engine: route per year (seeded order + TZ history), position at time t, sun/terminator, telemetry, log, TopoJSON decoder
+src/ui.js         DOM + SVG rendering, modes, year select + archive grid, scrubber, keyboard, ?t= / ?y= deep links
 src/style.css     dark "ops dashboard" theme, phone-friendly
 src/template.html page skeleton with /*__TOKENS__*/
 data/land-110m.json  Natural Earth land, 110 m, from world-atlas@2 (public domain)
@@ -68,7 +91,7 @@ test/             node:test suite for the engine
 ```
 
 ```
-npm test              # 16 engine tests
+npm test              # 22 engine tests
 node build.mjs        # writes dist/index.html
 ```
 

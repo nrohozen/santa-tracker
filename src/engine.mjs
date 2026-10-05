@@ -2,7 +2,7 @@
 // Everything here is deterministic in (year, time), so the same instant always
 // renders the same sleigh position, the same counters and the same log.
 
-import { STOPS } from './stops.mjs';
+import { STOPS, SKIPPED } from './stops.mjs';
 
 export const MIN = 60_000;
 export const HOUR = 3_600_000;
@@ -87,10 +87,87 @@ export function missionYear(now = new Date()) {
   return +now < Date.UTC(y, 11, 25, 13) ? y : y + 1;
 }
 
+export const ARCHIVE_YEARS = 10; // how many past flights the archive keeps
+
+// Time zones are political. These cities kept a different December offset
+// through the year given, so Santa's order of business there changed after it.
+export const TZ_HISTORY = [
+  { name: 'Apia', through: 2020, utc: 14, why: 'Samoa stopped observing summer time in 2021' },
+  { name: "Nuku'alofa", through: 2016, utc: 14, why: 'Tonga tried summer time once, in 2016–17' },
+  { name: 'Suva', through: 2021, utc: 13, why: 'Fiji dropped summer time in 2022' },
+  { name: 'Almaty', through: 2023, utc: 6, why: 'Kazakhstan unified on UTC+5 in March 2024' },
+  { name: 'Amman', through: 2021, utc: 2, why: 'Jordan stopped changing its clocks and stayed on UTC+3 in October 2022' },
+  { name: 'Damascus', through: 2021, utc: 2, why: 'Syria stopped changing its clocks and stayed on UTC+3 in October 2022' },
+  { name: 'Khartoum', through: 2016, utc: 3, why: 'Sudan moved its clocks back an hour in November 2017' },
+  { name: 'Juba', through: 2020, utc: 3, why: 'South Sudan moved its clocks back an hour in February 2021' },
+  { name: 'Casablanca', through: 2017, utc: 0, why: 'Morocco went to permanent UTC+1 in October 2018' },
+  { name: 'São Paulo', through: 2018, utc: -2, why: 'Brazil abolished summer time in 2019' },
+  { name: 'Rio de Janeiro', through: 2018, utc: -2, why: 'Brazil abolished summer time in 2019' },
+  { name: 'Brasília', through: 2018, utc: -2, why: 'Brazil abolished summer time in 2019' },
+  { name: 'Nuuk', through: 2022, utc: -3, why: 'Greenland moved its clocks to UTC−2 in 2023' },
+];
+
+export function stopsForYear(year, stops = STOPS) {
+  return stops.map(s => {
+    const h = TZ_HISTORY.find(h => h.name === s.name && year <= h.through);
+    return h ? { ...s, utc: h.utc } : s;
+  });
+}
+
+// What moved in the route this year compared with the year before.
+export function routeChanges(year) {
+  const prev = stopsForYear(year - 1), cur = stopsForYear(year);
+  const out = [];
+  cur.forEach((s, i) => {
+    if (s.utc === prev[i].utc) return;
+    const h = TZ_HISTORY.find(h => h.name === s.name && h.through === year - 1);
+    out.push({ name: s.name, country: s.country, from: prev[i].utc, to: s.utc, why: h ? h.why : '' });
+  });
+  return out;
+}
+
+// Seeded randomness so every year's route is different but fixed forever.
+export function hash32(a, b) {
+  let h = (Math.imul(a, 0x9E3779B1) ^ (b + 0x7F4A7C15)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85EBCA6B);
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+export function mulberry32(seed) {
+  return () => {
+    seed = (seed + 0x6D2B79F5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const STRATEGIES = ['nearest', 'north-south', 'nearest', 'south-north', 'east-west', 'nearest'];
+const nearestTo = (p, list) => list.reduce((best, s) => (haversineKm(p, s) < haversineKm(p, best) ? s : best), list[0]);
+
+// Order the cities inside one time zone. The elves pick a plan per zone per year.
+export function orderBand(group, year, bandIndex, prevEnd) {
+  const rnd = mulberry32(hash32(year, bandIndex));
+  const strategy = STRATEGIES[Math.floor(rnd() * STRATEGIES.length)];
+  const g = group.slice();
+  if (strategy === 'north-south') return { strategy, order: g.sort((a, b) => b.lat - a.lat) };
+  if (strategy === 'south-north') return { strategy, order: g.sort((a, b) => a.lat - b.lat) };
+  if (strategy === 'east-west') return { strategy, order: g.sort((a, b) => b.lon - a.lon) };
+  const order = [];
+  let cur = prevEnd ? nearestTo(prevEnd, g) : g[Math.floor(rnd() * g.length)];
+  while (g.length) {
+    order.push(cur);
+    g.splice(g.indexOf(cur), 1);
+    if (g.length) cur = nearestTo(cur, g);
+  }
+  return { strategy, order };
+}
+
 // Santa delivers at local midnight, so he sweeps westward one time zone per hour:
 // UTC+14 first (Dec 24 10:00 UTC), UTC−11 last (Dec 25 11:00 UTC). Inside a zone
-// the cities are visited in a north–south serpentine spread across the hour.
-export function buildRoute(year, stops = STOPS) {
+// the cities are spread across that zone's hour in the order the year's plan says.
+export function buildRoute(year, stops = stopsForYear(year)) {
   const midnightUtc = Date.UTC(year, 11, 25, 0, 0, 0);
   const bands = new Map();
   for (const s of stops) {
@@ -99,11 +176,15 @@ export function buildRoute(year, stops = STOPS) {
   }
   const offsets = [...bands.keys()].sort((a, b) => b - a);
   const timed = [];
+  const plans = [];
+  let prevEnd = null;
   offsets.forEach((utc, bi) => {
-    const group = bands.get(utc).slice().sort((a, b) => (bi % 2 ? a.lat - b.lat : b.lat - a.lat));
+    const { strategy, order } = orderBand(bands.get(utc), year, bi, prevEnd);
+    plans.push({ utc, strategy });
     const base = midnightUtc - utc * HOUR;
-    const n = group.length;
-    group.forEach((s, i) => timed.push({ ...s, t: base - 30 * MIN + (i + 0.5) * (60 * MIN / n) }));
+    const n = order.length;
+    order.forEach((s, i) => timed.push({ ...s, t: base - 30 * MIN + (i + 0.5) * (60 * MIN / n) }));
+    prevEnd = order[n - 1];
   });
   timed.sort((a, b) => a.t - b.t);
 
@@ -125,7 +206,7 @@ export function buildRoute(year, stops = STOPS) {
     w.cumPresents = presents;
     w.localArrive = w.arrive + w.utc * HOUR; // ms "as if UTC" — format with getUTC*
   });
-  return { year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length };
+  return { year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length, plans, changes: routeChanges(year) };
 }
 
 // ---------- state at an instant ----------
@@ -254,4 +335,5 @@ export const fmtClockUtc = t => {
 };
 export const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h).toFixed(h % 1 === 0.75 || h % 1 === -0.75 ? 2 : 1) : Math.abs(h)}`;
 
-export { STOPS };
+export { STOPS, SKIPPED };
+export const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;

@@ -20,9 +20,12 @@
 <body data-mode="live">
 <header class="top">
   <div class="brand"><a href="/">roho.foo</a><span class="sep">/</span><span>Santa Tracker</span></div>
-  <div class="modes" role="tablist" aria-label="Tracking mode">
-    <button id="mode-live" class="mode is-on" role="tab" aria-selected="true">Live</button>
-    <button id="mode-preview" class="mode" role="tab" aria-selected="false"><span class="long">Christmas Eve preview</span><span class="short">Dec 24 preview</span></button>
+  <div class="topright">
+    <label class="yearsel">Flight <select id="year" aria-label="Which year's flight"></select></label>
+    <div class="modes" role="tablist" aria-label="Tracking mode">
+      <button id="mode-live" class="mode is-on" role="tab" aria-selected="true">Live</button>
+      <button id="mode-preview" class="mode" role="tab" aria-selected="false"><span class="long">Christmas Eve preview</span><span class="short">Dec 24 preview</span></button>
+    </div>
   </div>
 </header>
 
@@ -118,10 +121,19 @@
     </div>
   </section>
 
+  <section class="card archive" aria-labelledby="archive-h">
+    <h2 id="archive-h">Flight archive</h2>
+    <p class="archive-intro">Every route from the last ten Christmases. Santa never flies the same scribble twice: the elves draw a new plan for each time zone every year, and whenever a country moves its clocks, his order of business moves with it. Pick a year to replay it.</p>
+    <div class="years" id="years"></div>
+    <p class="hint" id="year-notes"></p>
+  </section>
+
   <details class="card how">
     <summary>How this works</summary>
     <div class="how-body">
-      <p><strong>The route.</strong> Santa delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are visited in a north–south serpentine spread across that zone's hour, with at most six minutes per city. Between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>The route.</strong> Santa delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour in the order of that year's plan, with at most six minutes per city. Between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>Every country.</strong> <span id="how-countries"></span></p>
+      <p><strong>The archive.</strong> Each year's plan is seeded by the year, so 2019 looks the same for everyone, forever. On top of that the stop list carries real history: Samoa (2021) and Fiji (2022) stopped observing summer time, Brazil abolished it in 2019, Tonga tried it exactly once in 2016, Morocco went to permanent UTC+1 in late 2018, Sudan and South Sudan each moved their clocks back an hour, Jordan and Syria stopped changing theirs in 2022, Greenland moved to UTC−2 in 2023, and Kazakhstan unified on UTC+5 in 2024. In each case the city's midnight moved, so its place in the route moved too. The night shading for a past year is that year's real sun.</p>
       <p><strong>The shading is real.</strong> The dark side of the map is computed from the actual position of the sun for the instant on the clock (its declination and the subsolar point), so in December the whole Arctic is in polar night. The dashed line is solar midnight. Santa stays within a couple of hours of it all night, and the gap you see is the difference between the sun and the time zones people actually chose.</p>
       <p><strong>Preview mode</strong> is the same code with a simulated clock. Nothing else changes, so what you see in the preview is exactly what the live tracker will show on the night. A <code>?t=</code> parameter in the address deep-links any instant.</p>
       <p><strong>The numbers.</strong> Presents are a quarter of each metro population. Altitude, cookies and the lead reindeer are derived from the clock, so they are the same for everyone looking at the same moment. The rest is theatre.</p>

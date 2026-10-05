@@ -51,6 +51,9 @@ button, select { font: inherit; }
 .brand { font-weight: 700; letter-spacing: .01em; display: flex; align-items: center; gap: 8px; }
 .brand a { color: var(--text); text-decoration: none; }
 .brand .sep { color: var(--muted); font-weight: 400; }
+.topright { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.yearsel { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .9rem; }
+.yearsel select { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-family: var(--mono); }
 .modes { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .mode {
   border: 0; background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer;
@@ -140,6 +143,21 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 .log .when { font-family: var(--mono); color: var(--muted); font-size: .82rem; white-space: nowrap; }
 .log .note { color: var(--muted); }
 
+.archive-intro { margin: 0 0 12px; color: #c9d3e3; }
+.years { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.year-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 6px; text-align: left; cursor: pointer;
+  background: var(--card-2); color: var(--text); border: 2px solid var(--line); border-radius: 10px;
+}
+.year-card:hover { border-color: var(--muted); }
+.year-card.is-on { border-color: var(--red); }
+.year-card svg { display: block; width: 100%; height: auto; border-radius: 6px; }
+.year-card svg use { fill: var(--land); stroke: none; }
+.mini-route { fill: none; stroke: var(--gold); stroke-width: 2.2; stroke-linejoin: round; }
+.year-label { font-family: var(--mono); font-weight: 700; padding: 2px 4px 0; }
+.year-card.is-on .year-label { color: var(--red); }
+.year-meta { font-size: .75rem; color: var(--muted); padding: 0 4px 2px; }
+
 .how summary { cursor: pointer; font-weight: 600; }
 .how-body p { margin: 10px 0 0; color: #c9d3e3; }
 .how-body code { font-family: var(--mono); background: var(--card-2); padding: 1px 5px; border-radius: 5px; }
@@ -152,9 +170,12 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
 <body data-mode="live">
 <header class="top">
   <div class="brand"><a href="/">roho.foo</a><span class="sep">/</span><span>Santa Tracker</span></div>
-  <div class="modes" role="tablist" aria-label="Tracking mode">
-    <button id="mode-live" class="mode is-on" role="tab" aria-selected="true">Live</button>
-    <button id="mode-preview" class="mode" role="tab" aria-selected="false"><span class="long">Christmas Eve preview</span><span class="short">Dec 24 preview</span></button>
+  <div class="topright">
+    <label class="yearsel">Flight <select id="year" aria-label="Which year's flight"></select></label>
+    <div class="modes" role="tablist" aria-label="Tracking mode">
+      <button id="mode-live" class="mode is-on" role="tab" aria-selected="true">Live</button>
+      <button id="mode-preview" class="mode" role="tab" aria-selected="false"><span class="long">Christmas Eve preview</span><span class="short">Dec 24 preview</span></button>
+    </div>
   </div>
 </header>
 
@@ -250,10 +271,19 @@ h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted); text-transform: upp
     </div>
   </section>
 
+  <section class="card archive" aria-labelledby="archive-h">
+    <h2 id="archive-h">Flight archive</h2>
+    <p class="archive-intro">Every route from the last ten Christmases. Santa never flies the same scribble twice: the elves draw a new plan for each time zone every year, and whenever a country moves its clocks, his order of business moves with it. Pick a year to replay it.</p>
+    <div class="years" id="years"></div>
+    <p class="hint" id="year-notes"></p>
+  </section>
+
   <details class="card how">
     <summary>How this works</summary>
     <div class="how-body">
-      <p><strong>The route.</strong> Santa delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are visited in a north–south serpentine spread across that zone's hour, with at most six minutes per city. Between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>The route.</strong> Santa delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour in the order of that year's plan, with at most six minutes per city. Between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
+      <p><strong>Every country.</strong> <span id="how-countries"></span></p>
+      <p><strong>The archive.</strong> Each year's plan is seeded by the year, so 2019 looks the same for everyone, forever. On top of that the stop list carries real history: Samoa (2021) and Fiji (2022) stopped observing summer time, Brazil abolished it in 2019, Tonga tried it exactly once in 2016, Morocco went to permanent UTC+1 in late 2018, Sudan and South Sudan each moved their clocks back an hour, Jordan and Syria stopped changing theirs in 2022, Greenland moved to UTC−2 in 2023, and Kazakhstan unified on UTC+5 in 2024. In each case the city's midnight moved, so its place in the route moved too. The night shading for a past year is that year's real sun.</p>
       <p><strong>The shading is real.</strong> The dark side of the map is computed from the actual position of the sun for the instant on the clock (its declination and the subsolar point), so in December the whole Arctic is in polar night. The dashed line is solar midnight. Santa stays within a couple of hours of it all night, and the gap you see is the difference between the sun and the time zones people actually chose.</p>
       <p><strong>Preview mode</strong> is the same code with a simulated clock. Nothing else changes, so what you see in the preview is exactly what the live tracker will show on the night. A <code>?t=</code> parameter in the address deep-links any instant.</p>
       <p><strong>The numbers.</strong> Presents are a quarter of each metro population. Altitude, cookies and the lead reindeer are derived from the clock, so they are the same for everyone looking at the same moment. The rest is theatre.</p>
@@ -302,7 +332,6 @@ const STOPS = [
   { name: 'Tokyo', country: 'Japan', lat: 35.68, lon: 139.69, utc: 9, pop: 37 },
   { name: 'Osaka', country: 'Japan', lat: 34.69, lon: 135.50, utc: 9, pop: 19 },
   { name: 'Seoul', country: 'South Korea', lat: 37.57, lon: 126.98, utc: 9, pop: 26 },
-  { name: 'Pyongyang', country: 'North Korea', lat: 39.02, lon: 125.74, utc: 9, pop: 3 },
   { name: 'Dili', country: 'Timor-Leste', lat: -8.56, lon: 125.57, utc: 9, pop: 0.3 },
   // UTC+8
   { name: 'Perth', country: 'Australia', lat: -31.95, lon: 115.86, utc: 8, pop: 2.1 },
@@ -337,8 +366,6 @@ const STOPS = [
   { name: 'Almaty', country: 'Kazakhstan', lat: 43.24, lon: 76.90, utc: 5, pop: 2 },
   { name: 'Tashkent', country: 'Uzbekistan', lat: 41.30, lon: 69.24, utc: 5, pop: 2.9 },
   { name: 'Karachi', country: 'Pakistan', lat: 24.86, lon: 67.01, utc: 5, pop: 17 },
-  { name: 'Malé', country: 'Maldives', lat: 4.18, lon: 73.51, utc: 5, pop: 0.2 },
-  { name: 'Kabul', country: 'Afghanistan', lat: 34.53, lon: 69.17, utc: 4.5, pop: 4.6 },
   { name: 'Samara', country: 'Russia', lat: 53.20, lon: 50.15, utc: 4, pop: 1.1 },
   { name: 'Baku', country: 'Azerbaijan', lat: 40.41, lon: 49.87, utc: 4, pop: 2.3 },
   { name: 'Tbilisi', country: 'Georgia', lat: 41.72, lon: 44.83, utc: 4, pop: 1.2 },
@@ -349,7 +376,6 @@ const STOPS = [
   { name: 'Moscow', country: 'Russia', lat: 55.76, lon: 37.62, utc: 3, pop: 12.6 },
   { name: 'Istanbul', country: 'Türkiye', lat: 41.01, lon: 28.98, utc: 3, pop: 15.6 },
   { name: 'Baghdad', country: 'Iraq', lat: 33.31, lon: 44.37, utc: 3, pop: 7.5 },
-  { name: 'Riyadh', country: 'Saudi Arabia', lat: 24.71, lon: 46.68, utc: 3, pop: 7.7 },
   { name: 'Addis Ababa', country: 'Ethiopia', lat: 9.03, lon: 38.74, utc: 3, pop: 5.2 },
   { name: 'Nairobi', country: 'Kenya', lat: -1.29, lon: 36.82, utc: 3, pop: 5 },
   { name: 'Antananarivo', country: 'Madagascar', lat: -18.88, lon: 47.51, utc: 3, pop: 3.7 },
@@ -450,6 +476,127 @@ const STOPS = [
   { name: 'Avarua', country: 'Cook Islands', lat: -21.21, lon: -159.78, utc: -10, pop: 0.013 },
   { name: 'Pago Pago', country: 'American Samoa', lat: -14.28, lon: -170.70, utc: -11, pop: 0.05 },
   { name: 'Alofi', country: 'Niue', lat: -19.05, lon: -169.92, utc: -11, pop: 0.001 },
+  // ---- one city for every remaining country (added 2026-10-05) ----
+  // Oceania
+  { name: 'Funafuti', country: 'Tuvalu', lat: -8.52, lon: 179.20, utc: 12, pop: 0.007 },
+  { name: 'Yaren', country: 'Nauru', lat: -0.55, lon: 166.92, utc: 12, pop: 0.011 },
+  { name: 'Port Vila', country: 'Vanuatu', lat: -17.73, lon: 168.32, utc: 11, pop: 0.05 },
+  { name: 'Palikir', country: 'Micronesia', lat: 6.92, lon: 158.16, utc: 11, pop: 0.007 },
+  { name: 'Koror', country: 'Palau', lat: 7.34, lon: 134.48, utc: 9, pop: 0.011 },
+  // Asia
+  { name: 'Phnom Penh', country: 'Cambodia', lat: 11.56, lon: 104.92, utc: 7, pop: 2.3 },
+  { name: 'Vientiane', country: 'Laos', lat: 17.97, lon: 102.63, utc: 7, pop: 1 },
+  { name: 'Thimphu', country: 'Bhutan', lat: 27.47, lon: 89.64, utc: 6, pop: 0.1 },
+  { name: 'Ashgabat', country: 'Turkmenistan', lat: 37.95, lon: 58.38, utc: 5, pop: 1 },
+  { name: 'Yerevan', country: 'Armenia', lat: 40.18, lon: 44.51, utc: 4, pop: 1.1 },
+  { name: 'Muscat', country: 'Oman', lat: 23.59, lon: 58.41, utc: 4, pop: 1.6 },
+  { name: 'Kuwait City', country: 'Kuwait', lat: 29.37, lon: 47.98, utc: 3, pop: 3 },
+  { name: 'Manama', country: 'Bahrain', lat: 26.23, lon: 50.59, utc: 3, pop: 0.7 },
+  { name: 'Doha', country: 'Qatar', lat: 25.29, lon: 51.53, utc: 3, pop: 2.4 },
+  { name: 'Damascus', country: 'Syria', lat: 33.51, lon: 36.29, utc: 3, pop: 2.5 },
+  { name: 'Amman', country: 'Jordan', lat: 31.95, lon: 35.93, utc: 3, pop: 4 },
+  { name: 'Beirut', country: 'Lebanon', lat: 33.89, lon: 35.50, utc: 2, pop: 2.4 },
+  { name: 'Bethlehem', country: 'Palestine', lat: 31.70, lon: 35.20, utc: 2, pop: 0.03 },
+  { name: 'Nicosia', country: 'Cyprus', lat: 35.19, lon: 33.38, utc: 2, pop: 0.3 },
+  // Europe
+  { name: 'Tallinn', country: 'Estonia', lat: 59.44, lon: 24.75, utc: 2, pop: 0.45 },
+  { name: 'Riga', country: 'Latvia', lat: 56.95, lon: 24.11, utc: 2, pop: 0.6 },
+  { name: 'Vilnius', country: 'Lithuania', lat: 54.69, lon: 25.28, utc: 2, pop: 0.6 },
+  { name: 'Minsk', country: 'Belarus', lat: 53.90, lon: 27.57, utc: 3, pop: 2 },
+  { name: 'Chișinău', country: 'Moldova', lat: 47.01, lon: 28.86, utc: 2, pop: 0.7 },
+  { name: 'Sofia', country: 'Bulgaria', lat: 42.70, lon: 23.32, utc: 2, pop: 1.3 },
+  { name: 'Bratislava', country: 'Slovakia', lat: 48.15, lon: 17.11, utc: 1, pop: 0.5 },
+  { name: 'Budapest', country: 'Hungary', lat: 47.50, lon: 19.04, utc: 1, pop: 1.8 },
+  { name: 'Ljubljana', country: 'Slovenia', lat: 46.06, lon: 14.51, utc: 1, pop: 0.3 },
+  { name: 'Zagreb', country: 'Croatia', lat: 45.81, lon: 15.98, utc: 1, pop: 0.8 },
+  { name: 'Sarajevo', country: 'Bosnia and Herzegovina', lat: 43.86, lon: 18.41, utc: 1, pop: 0.4 },
+  { name: 'Belgrade', country: 'Serbia', lat: 44.79, lon: 20.45, utc: 1, pop: 1.4 },
+  { name: 'Podgorica', country: 'Montenegro', lat: 42.44, lon: 19.26, utc: 1, pop: 0.19 },
+  { name: 'Pristina', country: 'Kosovo', lat: 42.66, lon: 21.17, utc: 1, pop: 0.2 },
+  { name: 'Skopje', country: 'North Macedonia', lat: 41.99, lon: 21.43, utc: 1, pop: 0.6 },
+  { name: 'Tirana', country: 'Albania', lat: 41.33, lon: 19.82, utc: 1, pop: 0.6 },
+  { name: 'Bern', country: 'Switzerland', lat: 46.95, lon: 7.45, utc: 1, pop: 0.4 },
+  { name: 'Vaduz', country: 'Liechtenstein', lat: 47.14, lon: 9.52, utc: 1, pop: 0.006 },
+  { name: 'Luxembourg', country: 'Luxembourg', lat: 49.61, lon: 6.13, utc: 1, pop: 0.13 },
+  { name: 'Brussels', country: 'Belgium', lat: 50.85, lon: 4.35, utc: 1, pop: 1.2 },
+  { name: 'Monaco', country: 'Monaco', lat: 43.73, lon: 7.42, utc: 1, pop: 0.04 },
+  { name: 'Andorra la Vella', country: 'Andorra', lat: 42.51, lon: 1.52, utc: 1, pop: 0.02 },
+  { name: 'San Marino', country: 'San Marino', lat: 43.94, lon: 12.45, utc: 1, pop: 0.004 },
+  { name: 'Vatican City', country: 'Vatican City', lat: 41.90, lon: 12.45, utc: 1, pop: 0.001 },
+  { name: 'Valletta', country: 'Malta', lat: 35.90, lon: 14.51, utc: 1, pop: 0.2 },
+  // Africa
+  { name: 'Tunis', country: 'Tunisia', lat: 36.81, lon: 10.18, utc: 1, pop: 2.4 },
+  { name: 'Khartoum', country: 'Sudan', lat: 15.50, lon: 32.56, utc: 2, pop: 5.8 },
+  { name: 'Juba', country: 'South Sudan', lat: 4.85, lon: 31.58, utc: 2, pop: 0.5 },
+  { name: 'Asmara', country: 'Eritrea', lat: 15.34, lon: 38.93, utc: 3, pop: 0.9 },
+  { name: 'Djibouti', country: 'Djibouti', lat: 11.59, lon: 43.15, utc: 3, pop: 0.6 },
+  { name: 'Kampala', country: 'Uganda', lat: 0.35, lon: 32.58, utc: 3, pop: 3.5 },
+  { name: 'Dar es Salaam', country: 'Tanzania', lat: -6.79, lon: 39.21, utc: 3, pop: 7 },
+  { name: 'Kigali', country: 'Rwanda', lat: -1.94, lon: 30.06, utc: 2, pop: 1.2 },
+  { name: 'Bujumbura', country: 'Burundi', lat: -3.38, lon: 29.36, utc: 2, pop: 1 },
+  { name: 'Maputo', country: 'Mozambique', lat: -25.97, lon: 32.57, utc: 2, pop: 1.1 },
+  { name: 'Harare', country: 'Zimbabwe', lat: -17.83, lon: 31.05, utc: 2, pop: 1.5 },
+  { name: 'Lusaka', country: 'Zambia', lat: -15.39, lon: 28.32, utc: 2, pop: 3 },
+  { name: 'Lilongwe', country: 'Malawi', lat: -13.96, lon: 33.77, utc: 2, pop: 1.1 },
+  { name: 'Gaborone', country: 'Botswana', lat: -24.65, lon: 25.91, utc: 2, pop: 0.25 },
+  { name: 'Windhoek', country: 'Namibia', lat: -22.56, lon: 17.08, utc: 2, pop: 0.45 },
+  { name: 'Maseru', country: 'Lesotho', lat: -29.31, lon: 27.48, utc: 2, pop: 0.33 },
+  { name: 'Mbabane', country: 'Eswatini', lat: -26.32, lon: 31.14, utc: 2, pop: 0.1 },
+  { name: 'Moroni', country: 'Comoros', lat: -11.70, lon: 43.26, utc: 3, pop: 0.06 },
+  { name: 'Victoria', country: 'Seychelles', lat: -4.62, lon: 55.45, utc: 4, pop: 0.03 },
+  { name: "N'Djamena", country: 'Chad', lat: 12.13, lon: 15.06, utc: 1, pop: 1.6 },
+  { name: 'Niamey', country: 'Niger', lat: 13.51, lon: 2.11, utc: 1, pop: 1.3 },
+  { name: 'Bamako', country: 'Mali', lat: 12.64, lon: -8.00, utc: 0, pop: 2.7 },
+  { name: 'Ouagadougou', country: 'Burkina Faso', lat: 12.37, lon: -1.52, utc: 0, pop: 2.8 },
+  { name: 'Banjul', country: 'Gambia', lat: 13.45, lon: -16.58, utc: 0, pop: 0.4 },
+  { name: 'Bissau', country: 'Guinea-Bissau', lat: 11.86, lon: -15.60, utc: 0, pop: 0.5 },
+  { name: 'Conakry', country: 'Guinea', lat: 9.64, lon: -13.58, utc: 0, pop: 2 },
+  { name: 'Freetown', country: 'Sierra Leone', lat: 8.47, lon: -13.23, utc: 0, pop: 1.2 },
+  { name: 'Monrovia', country: 'Liberia', lat: 6.30, lon: -10.80, utc: 0, pop: 1.5 },
+  { name: 'Abidjan', country: "Côte d'Ivoire", lat: 5.36, lon: -4.01, utc: 0, pop: 5.6 },
+  { name: 'Lomé', country: 'Togo', lat: 6.13, lon: 1.22, utc: 0, pop: 1.8 },
+  { name: 'Cotonou', country: 'Benin', lat: 6.37, lon: 2.39, utc: 1, pop: 0.7 },
+  { name: 'Yaoundé', country: 'Cameroon', lat: 3.87, lon: 11.52, utc: 1, pop: 4 },
+  { name: 'Bangui', country: 'Central African Republic', lat: 4.39, lon: 18.56, utc: 1, pop: 0.9 },
+  { name: 'Malabo', country: 'Equatorial Guinea', lat: 3.75, lon: 8.78, utc: 1, pop: 0.3 },
+  { name: 'Libreville', country: 'Gabon', lat: 0.39, lon: 9.45, utc: 1, pop: 0.8 },
+  { name: 'Brazzaville', country: 'Republic of the Congo', lat: -4.27, lon: 15.28, utc: 1, pop: 2.4 },
+  { name: 'São Tomé', country: 'São Tomé and Príncipe', lat: 0.34, lon: 6.73, utc: 0, pop: 0.08 },
+  // Americas
+  { name: 'Belize City', country: 'Belize', lat: 17.50, lon: -88.19, utc: -6, pop: 0.06 },
+  { name: 'Tegucigalpa', country: 'Honduras', lat: 14.07, lon: -87.19, utc: -6, pop: 1.4 },
+  { name: 'San Salvador', country: 'El Salvador', lat: 13.69, lon: -89.22, utc: -6, pop: 1.1 },
+  { name: 'Managua', country: 'Nicaragua', lat: 12.11, lon: -86.24, utc: -6, pop: 1.1 },
+  { name: 'Panama City', country: 'Panama', lat: 8.98, lon: -79.52, utc: -5, pop: 1.9 },
+  { name: 'Kingston', country: 'Jamaica', lat: 17.97, lon: -76.79, utc: -5, pop: 0.6 },
+  { name: 'Port-au-Prince', country: 'Haiti', lat: 18.54, lon: -72.34, utc: -5, pop: 2.8 },
+  { name: 'Nassau', country: 'Bahamas', lat: 25.05, lon: -77.35, utc: -5, pop: 0.28 },
+  { name: 'Bridgetown', country: 'Barbados', lat: 13.10, lon: -59.62, utc: -4, pop: 0.1 },
+  { name: 'Port of Spain', country: 'Trinidad and Tobago', lat: 10.65, lon: -61.52, utc: -4, pop: 0.5 },
+  { name: "St. George's", country: 'Grenada', lat: 12.06, lon: -61.75, utc: -4, pop: 0.04 },
+  { name: 'Kingstown', country: 'St Vincent and the Grenadines', lat: 13.16, lon: -61.22, utc: -4, pop: 0.03 },
+  { name: 'Castries', country: 'St Lucia', lat: 14.01, lon: -60.99, utc: -4, pop: 0.07 },
+  { name: 'Roseau', country: 'Dominica', lat: 15.30, lon: -61.39, utc: -4, pop: 0.02 },
+  { name: "St. John's", country: 'Antigua and Barbuda', lat: 17.12, lon: -61.85, utc: -4, pop: 0.03 },
+  { name: 'Basseterre', country: 'St Kitts and Nevis', lat: 17.30, lon: -62.73, utc: -4, pop: 0.015 },
+  { name: 'Georgetown', country: 'Guyana', lat: 6.80, lon: -58.16, utc: -4, pop: 0.2 },
+  { name: 'Paramaribo', country: 'Suriname', lat: 5.85, lon: -55.20, utc: -3, pop: 0.25 },
+];
+
+// Countries Santa lets sleep: places where public Christmas celebration is
+// banned or essentially absent. "Nobody celebrates" is never literally true,
+// so the rule is written down here, where it can be argued with.
+const SKIPPED = [
+  { country: 'Afghanistan', why: 'no public observance' },
+  { country: 'Brunei', why: 'public celebration banned since 2015' },
+  { country: 'Libya', why: 'no public observance' },
+  { country: 'Maldives', why: 'public non-Muslim observance is not permitted' },
+  { country: 'Mauritania', why: 'no public observance' },
+  { country: 'North Korea', why: 'not permitted' },
+  { country: 'Saudi Arabia', why: 'no public observance' },
+  { country: 'Somalia', why: 'public celebration banned since 2015' },
+  { country: 'Tajikistan', why: 'public celebration restricted since 2015' },
+  { country: 'Yemen', why: 'no public observance' },
 ];
 
 // Santa Tracker engine — pure functions, no DOM.
@@ -540,10 +687,87 @@ function missionYear(now = new Date()) {
   return +now < Date.UTC(y, 11, 25, 13) ? y : y + 1;
 }
 
+const ARCHIVE_YEARS = 10; // how many past flights the archive keeps
+
+// Time zones are political. These cities kept a different December offset
+// through the year given, so Santa's order of business there changed after it.
+const TZ_HISTORY = [
+  { name: 'Apia', through: 2020, utc: 14, why: 'Samoa stopped observing summer time in 2021' },
+  { name: "Nuku'alofa", through: 2016, utc: 14, why: 'Tonga tried summer time once, in 2016–17' },
+  { name: 'Suva', through: 2021, utc: 13, why: 'Fiji dropped summer time in 2022' },
+  { name: 'Almaty', through: 2023, utc: 6, why: 'Kazakhstan unified on UTC+5 in March 2024' },
+  { name: 'Amman', through: 2021, utc: 2, why: 'Jordan stopped changing its clocks and stayed on UTC+3 in October 2022' },
+  { name: 'Damascus', through: 2021, utc: 2, why: 'Syria stopped changing its clocks and stayed on UTC+3 in October 2022' },
+  { name: 'Khartoum', through: 2016, utc: 3, why: 'Sudan moved its clocks back an hour in November 2017' },
+  { name: 'Juba', through: 2020, utc: 3, why: 'South Sudan moved its clocks back an hour in February 2021' },
+  { name: 'Casablanca', through: 2017, utc: 0, why: 'Morocco went to permanent UTC+1 in October 2018' },
+  { name: 'São Paulo', through: 2018, utc: -2, why: 'Brazil abolished summer time in 2019' },
+  { name: 'Rio de Janeiro', through: 2018, utc: -2, why: 'Brazil abolished summer time in 2019' },
+  { name: 'Brasília', through: 2018, utc: -2, why: 'Brazil abolished summer time in 2019' },
+  { name: 'Nuuk', through: 2022, utc: -3, why: 'Greenland moved its clocks to UTC−2 in 2023' },
+];
+
+function stopsForYear(year, stops = STOPS) {
+  return stops.map(s => {
+    const h = TZ_HISTORY.find(h => h.name === s.name && year <= h.through);
+    return h ? { ...s, utc: h.utc } : s;
+  });
+}
+
+// What moved in the route this year compared with the year before.
+function routeChanges(year) {
+  const prev = stopsForYear(year - 1), cur = stopsForYear(year);
+  const out = [];
+  cur.forEach((s, i) => {
+    if (s.utc === prev[i].utc) return;
+    const h = TZ_HISTORY.find(h => h.name === s.name && h.through === year - 1);
+    out.push({ name: s.name, country: s.country, from: prev[i].utc, to: s.utc, why: h ? h.why : '' });
+  });
+  return out;
+}
+
+// Seeded randomness so every year's route is different but fixed forever.
+function hash32(a, b) {
+  let h = (Math.imul(a, 0x9E3779B1) ^ (b + 0x7F4A7C15)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85EBCA6B);
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+function mulberry32(seed) {
+  return () => {
+    seed = (seed + 0x6D2B79F5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const STRATEGIES = ['nearest', 'north-south', 'nearest', 'south-north', 'east-west', 'nearest'];
+const nearestTo = (p, list) => list.reduce((best, s) => (haversineKm(p, s) < haversineKm(p, best) ? s : best), list[0]);
+
+// Order the cities inside one time zone. The elves pick a plan per zone per year.
+function orderBand(group, year, bandIndex, prevEnd) {
+  const rnd = mulberry32(hash32(year, bandIndex));
+  const strategy = STRATEGIES[Math.floor(rnd() * STRATEGIES.length)];
+  const g = group.slice();
+  if (strategy === 'north-south') return { strategy, order: g.sort((a, b) => b.lat - a.lat) };
+  if (strategy === 'south-north') return { strategy, order: g.sort((a, b) => a.lat - b.lat) };
+  if (strategy === 'east-west') return { strategy, order: g.sort((a, b) => b.lon - a.lon) };
+  const order = [];
+  let cur = prevEnd ? nearestTo(prevEnd, g) : g[Math.floor(rnd() * g.length)];
+  while (g.length) {
+    order.push(cur);
+    g.splice(g.indexOf(cur), 1);
+    if (g.length) cur = nearestTo(cur, g);
+  }
+  return { strategy, order };
+}
+
 // Santa delivers at local midnight, so he sweeps westward one time zone per hour:
 // UTC+14 first (Dec 24 10:00 UTC), UTC−11 last (Dec 25 11:00 UTC). Inside a zone
-// the cities are visited in a north–south serpentine spread across the hour.
-function buildRoute(year, stops = STOPS) {
+// the cities are spread across that zone's hour in the order the year's plan says.
+function buildRoute(year, stops = stopsForYear(year)) {
   const midnightUtc = Date.UTC(year, 11, 25, 0, 0, 0);
   const bands = new Map();
   for (const s of stops) {
@@ -552,11 +776,15 @@ function buildRoute(year, stops = STOPS) {
   }
   const offsets = [...bands.keys()].sort((a, b) => b - a);
   const timed = [];
+  const plans = [];
+  let prevEnd = null;
   offsets.forEach((utc, bi) => {
-    const group = bands.get(utc).slice().sort((a, b) => (bi % 2 ? a.lat - b.lat : b.lat - a.lat));
+    const { strategy, order } = orderBand(bands.get(utc), year, bi, prevEnd);
+    plans.push({ utc, strategy });
     const base = midnightUtc - utc * HOUR;
-    const n = group.length;
-    group.forEach((s, i) => timed.push({ ...s, t: base - 30 * MIN + (i + 0.5) * (60 * MIN / n) }));
+    const n = order.length;
+    order.forEach((s, i) => timed.push({ ...s, t: base - 30 * MIN + (i + 0.5) * (60 * MIN / n) }));
+    prevEnd = order[n - 1];
   });
   timed.sort((a, b) => a.t - b.t);
 
@@ -578,7 +806,7 @@ function buildRoute(year, stops = STOPS) {
     w.cumPresents = presents;
     w.localArrive = w.arrive + w.utc * HOUR; // ms "as if UTC" — format with getUTC*
   });
-  return { year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length };
+  return { year, launch, home, waypoints, totalKm: km, totalPresents: presents, stopCount: timed.length, plans, changes: routeChanges(year) };
 }
 
 // ---------- state at an instant ----------
@@ -708,6 +936,8 @@ const fmtClockUtc = t => {
 const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h).toFixed(h % 1 === 0.75 || h % 1 === -0.75 ? 2 : 1) : Math.abs(h)}`;
 
 
+const countryCount = (stops = STOPS) => new Set(stops.map(s => s.country)).size;
+
 // Santa Tracker UI — drives the page from the pure engine.
 // Globals from the build: LAND_TOPO (TopoJSON) and everything exported by engine.mjs.
 (() => {
@@ -717,10 +947,15 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
   const SVG = 'http://www.w3.org/2000/svg';
   const el = (tag, attrs = {}) => { const n = document.createElementNS(SVG, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
 
-  // ---------- route + static map ----------
-  let year = missionYear(new Date());
-  let route = buildRoute(year);
+  // ---------- years + routes ----------
+  const currentYear = missionYear(new Date());
+  const years = Array.from({ length: ARCHIVE_YEARS + 1 }, (_, i) => currentYear - i); // newest first
+  const routeCache = new Map();
+  const routeFor = y => { if (!routeCache.has(y)) routeCache.set(y, buildRoute(y)); return routeCache.get(y); };
+  let year = currentYear;
+  let route = routeFor(year);
 
+  // ---------- static map ----------
   const ringsToPath = polys => {
     let d = '';
     for (const poly of polys) for (const ring of poly) {
@@ -741,7 +976,7 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
     return d;
   };
 
-  $('land').appendChild(el('path', { d: ringsToPath(decodeTopo(LAND_TOPO, 'land')), 'fill-rule': 'evenodd' }));
+  $('land').appendChild(el('path', { id: 'land-path', d: ringsToPath(decodeTopo(LAND_TOPO, 'land')), 'fill-rule': 'evenodd' }));
   const grat = $('graticule');
   for (let lon = -150; lon <= 150; lon += 30) grat.appendChild(el('line', { x1: px({ lat: 0, lon })[0], x2: px({ lat: 0, lon })[0], y1: 0, y2: H }));
   for (let lat = -60; lat <= 60; lat += 30) grat.appendChild(el('line', { y1: px({ lat, lon: 0 })[1], y2: px({ lat, lon: 0 })[1], x1: 0, x2: W }));
@@ -751,16 +986,23 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
   const utcStamp = t => { const d = new Date(t); return `Dec ${d.getUTCDate()} · ${fmtClockUtc(t)} UTC`; };
   const big = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(0) + 'k' : String(Math.round(n));
   const localStamp = w => `${fmtClockUtc(w.localArrive)} local`;
+  const listNames = names => names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+  const changeText = ch => {
+    const groups = new Map();
+    for (const c of ch) { const k = `${c.why}|${c.from}|${c.to}`; if (!groups.has(k)) groups.set(k, { ...c, names: [] }); groups.get(k).names.push(c.name); }
+    return [...groups.values()].map(g => `${listNames(g.names)} moved from ${fmtOffset(g.from)} to ${fmtOffset(g.to)}: ${g.why}`).join('. ') + '.';
+  };
 
+  // ---------- per-route DOM (stops, future track, labels) ----------
   const stopEls = [];
-  function buildRoute_() {
+  function applyRouteDom() {
     const g = $('stops'); g.textContent = ''; stopEls.length = 0;
     for (const w of route.waypoints) {
       if (w.pole) continue;
       const [cx, cy] = px(w);
       const c = el('circle', { cx: cx.toFixed(1), cy: cy.toFixed(1), class: 'stop' });
       const title = el('title');
-      title.textContent = `${w.name}, ${w.country} · arrives ${localStamp(w)} (${fmtClockUtc(w.arrive)} UTC) · ${big(w.presents)} presents`;
+      title.textContent = `${w.name}, ${w.country} (${fmtOffset(w.utc)}) · arrives ${localStamp(w)} (${fmtClockUtc(w.arrive)} UTC) · ${big(w.presents)} presents`;
       c.appendChild(title);
       g.appendChild(c); stopEls.push([w, c]);
     }
@@ -768,12 +1010,43 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
     $('scrub').min = route.launch; $('scrub').max = route.home; $('scrub').value = route.launch;
     $('scrub-min').textContent = `Launch · ${utcStamp(route.launch)}`;
     $('scrub-max').textContent = `Home · ${utcStamp(route.home)}`;
-    $('how-totals').textContent = `That is ${route.stopCount} stops, about ${fmtInt(route.totalKm)} km, in ${fmtDuration(route.home - route.launch)}.`;
+    $('how-totals').textContent = `In ${route.year} that is ${route.stopCount} stops, about ${fmtInt(route.totalKm)} km, in ${fmtDuration(route.home - route.launch)}.`;
+    $('how-countries').textContent = `The route touches ${countryCount()} countries and territories: every country where someone is waiting up, one city each where only a capital was missing. ${SKIPPED.length} are left to sleep because public Christmas celebration there is banned or essentially absent: ${SKIPPED.map(k => `${k.country} (${k.why})`).join(', ')}. The list lives in the source, where it can be argued with.`;
     $('foot-year').textContent = String(new Date().getFullYear());
   }
-  buildRoute_();
 
-  // Viewer's offset on Christmas Eve (not today's: DST may differ).
+  // Switch the page to a year's route (no mode change here).
+  function applyYear(y) {
+    year = y; route = routeFor(y); applyRouteDom(); lastLogKey = '';
+    $('year').value = String(y);
+    for (const b of document.querySelectorAll('.year-card')) b.classList.toggle('is-on', +b.dataset.year === y);
+    const ch = route.changes;
+    $('year-notes').textContent = ch.length
+      ? `${y}: ${changeText(ch)} The route around ${ch.length === 1 ? 'it' : 'them'} was redrawn to match.`
+      : `${y}: no time-zone changes since the Christmas before. The elves just drew a new plan.`;
+  }
+
+  // ---------- archive grid + year select ----------
+  const yearsEl = $('years'), sel = $('year');
+  for (const y of years) {
+    const r = routeFor(y);
+    const b = document.createElement('button'); b.className = 'year-card'; b.type = 'button'; b.dataset.year = y;
+    b.setAttribute('aria-label', `Replay the ${y} flight`);
+    const svg = el('svg', { viewBox: '0 0 1000 500', 'aria-hidden': 'true' });
+    svg.appendChild(el('rect', { class: 'ocean', width: W, height: H }));
+    svg.appendChild(el('use', { href: '#land-path' }));
+    svg.appendChild(el('path', { class: 'mini-route', d: polyline(track(r, r.launch, r.home, 3 * MIN)) }));
+    const label = document.createElement('span'); label.className = 'year-label'; label.textContent = y === currentYear ? `${y} · this year` : String(y);
+    const meta = document.createElement('span'); meta.className = 'year-meta';
+    meta.textContent = `${r.stopCount} stops · ${fmtInt(r.totalKm)} km${r.changes.length ? ` · ${r.changes.length} clock change${r.changes.length > 1 ? 's' : ''}` : ''}`;
+    b.append(svg, label, meta);
+    b.onclick = () => { setYear(y); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    yearsEl.appendChild(b);
+    const o = document.createElement('option'); o.value = y; o.textContent = y === currentYear ? `${y} (this year)` : String(y); sel.appendChild(o);
+  }
+  sel.onchange = e => setYear(+e.target.value);
+
+  // Viewer's offset on that year's Christmas Eve (not today's: DST may differ).
   const viewerOffset = () => -new Date(Date.UTC(year, 11, 24, 12)).getTimezoneOffset() / 60;
   const viewerZone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
 
@@ -795,6 +1068,7 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
   };
 
   function setMode(m, t) {
+    if (m === 'live' && year !== currentYear) applyYear(currentYear); // live only exists for this year's flight
     mode = m;
     document.body.dataset.mode = m;
     $('mode-live').classList.toggle('is-on', m === 'live'); $('mode-live').setAttribute('aria-selected', m === 'live');
@@ -803,6 +1077,11 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
     playing = false; $('play').textContent = '▶ Play'; $('play').setAttribute('aria-pressed', 'false');
     if (m === 'preview') { simT = clamp(t ?? nowOnChristmasEve()); render(simT); syncUrl(); }
     else { history.replaceState(null, '', location.pathname); render(Date.now()); }
+  }
+  function setYear(y, t) {
+    applyYear(y);
+    if (y === currentYear && mode === 'live') render(Date.now());
+    else setMode('preview', t);
   }
   function syncUrl() {
     if (mode !== 'preview') return;
@@ -822,6 +1101,9 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
   function render(t) {
     const s = stateAt(route, t);
     const tel = telemetry(s);
+    const past = year < currentYear;
+    const is = past ? 'was' : 'is';
+    const prefix = year !== currentYear ? `${year} · ` : '';
 
     // clocks
     if (mode === 'live') {
@@ -829,8 +1111,10 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
       $('clock-local-label').textContent = viewerZone ? `Your time · ${viewerZone.split('/').pop().replace('_', ' ')}` : 'Your time';
       $('clock-local').textContent = localFmtTime(t);
     } else {
-      $('clock-utc-label').textContent = 'Simulated · UTC'; $('clock-utc').textContent = `Dec ${new Date(t).getUTCDate()} ${fmtClockUtc(t)}`;
-      $('clock-local-label').textContent = 'Simulated · your time';
+      const word = past ? 'Archive' : 'Simulated';
+      $('clock-utc-label').textContent = `${word} · UTC`;
+      $('clock-utc').textContent = `Dec ${new Date(t).getUTCDate()}${past ? ' ' + year : ''} ${fmtClockUtc(t)}`;
+      $('clock-local-label').textContent = `${word} · your time`;
       $('clock-local').textContent = `${localFmtDate(t)} ${localFmtTime(t)}`;
       $('scrub').value = t; $('scrub-time').textContent = utcStamp(t);
     }
@@ -839,26 +1123,26 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
     const k = $('kicker'), h = $('headline'), sub = $('subline');
     k.className = 'kicker';
     if (s.phase === 'pre') {
-      k.classList.add('pre'); k.textContent = 'PRE-FLIGHT · NORTH POLE';
-      h.textContent = 'Santa is at the North Pole, loading the sleigh';
+      k.classList.add('pre'); k.textContent = prefix + 'PRE-FLIGHT · NORTH POLE';
+      h.textContent = `Santa ${is} at the North Pole, loading the sleigh`;
       const launchLocal = `${localFmtDate(route.launch)} ${localFmtTime(route.launch)} your time`;
       sub.textContent = `Launch in ${fmtDuration(s.untilLaunchMs)} · ${utcStamp(route.launch)} (${launchLocal}). First stop: ${s.next.name}.`;
       $('hint').hidden = mode !== 'live';
     } else if (s.phase === 'done') {
-      k.classList.add('done'); k.textContent = 'MISSION COMPLETE';
-      h.textContent = 'Santa is home at the North Pole';
-      sub.textContent = `${route.stopCount} stops, ${big(route.totalPresents)} presents, ${fmtInt(route.totalKm)} km. The reindeer are asleep.`;
+      k.classList.add('done'); k.textContent = prefix + 'MISSION COMPLETE';
+      h.textContent = `Santa ${is} home at the North Pole`;
+      sub.textContent = `${route.stopCount} stops, ${big(route.totalPresents)} presents, ${fmtInt(route.totalKm)} km. The reindeer ${past ? 'slept well' : 'are asleep'}.`;
       $('hint').hidden = true;
     } else if (s.status === 'delivering') {
-      k.textContent = 'IN FLIGHT · ON THE ROOFTOPS';
-      h.textContent = `Santa is in ${s.at.name}, ${s.at.country}`;
+      k.textContent = prefix + 'IN FLIGHT · ON THE ROOFTOPS';
+      h.textContent = `Santa ${is} in ${s.at.name}, ${s.at.country}`;
       sub.textContent = `${localStamp(s.at)} · ${big(s.at.presents)} presents here · next: ${s.next.name} in ${fmtDuration(s.etaMs)}`;
       $('hint').hidden = true;
     } else {
-      k.textContent = 'IN FLIGHT · EN ROUTE';
-      h.textContent = s.next.pole ? 'Santa is heading home to the North Pole' : `Santa is on his way to ${s.next.name}, ${s.next.country}`;
+      k.textContent = prefix + 'IN FLIGHT · EN ROUTE';
+      h.textContent = s.next.pole ? `Santa ${is} heading home to the North Pole` : `Santa ${is} on his way to ${s.next.name}, ${s.next.country}`;
       const from = s.at.pole ? 'the North Pole' : s.at.name;
-      sub.textContent = `Left ${from} ${fmtDuration(t - s.at.depart)} ago · ${fmtInt(s.speedKmh)} km/h · arrives in ${fmtDuration(s.etaMs)}`;
+      sub.textContent = `Left ${from} ${fmtDuration(t - s.at.depart)} ${past ? 'earlier' : 'ago'} · ${fmtInt(s.speedKmh)} km/h · arrives in ${fmtDuration(s.etaMs)}`;
       $('hint').hidden = true;
     }
 
@@ -893,7 +1177,7 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
     $('t-you-label').textContent = `Your time zone · ${fmtOffset(off)}`;
     if (s.phase === 'flight' && t >= you.arrive) {
       const after = t - you.arrive;
-      $('t-you').textContent = after < 90 * MIN ? 'Santa is here' : 'Santa has been by';
+      $('t-you').textContent = after < 90 * MIN ? (past ? 'Santa was here' : 'Santa is here') : 'Santa has been by';
       $('t-you-sub').textContent = `reached ${fmtOffset(you.utc)} at ${localFmtTime(you.arrive)} your time`;
     } else {
       $('t-you').textContent = `${localFmtDate(you.arrive)} ${localFmtTime(you.arrive)}`;
@@ -909,7 +1193,7 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
     $('s-sack').textContent = `${tel.sackPct.toFixed(1)}% full`;
 
     // log (only rebuild when the set of arrivals changes)
-    const logKey = `${s.phase}:${s.stopsDone}:${s.at && s.at.i}`;
+    const logKey = `${year}:${s.phase}:${s.stopsDone}:${s.at && s.at.i}`;
     if (logKey !== lastLogKey) {
       lastLogKey = logKey;
       const items = missionLog(s, 8);
@@ -935,7 +1219,11 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
     if (lastTs == null) lastTs = ts;
     const dt = (ts - lastTs) / 1000; lastTs = ts;
     if (mode === 'live') {
-      if (ts - lastLiveRender >= 1000) { lastLiveRender = ts; const y = missionYear(new Date()); if (y !== year) { year = y; route = buildRoute(year); buildRoute_(); } render(Date.now()); }
+      if (ts - lastLiveRender >= 1000) {
+        lastLiveRender = ts;
+        if (missionYear(new Date()) !== currentYear) { location.reload(); return; } // the sleigh got home: new year, new archive
+        render(Date.now());
+      }
     } else if (playing) {
       simT += dt * speed * 1000;
       if (simT >= route.home) { simT = route.home; setPlaying(false); }
@@ -966,12 +1254,10 @@ const fmtOffset = h => `UTC${h >= 0 ? '+' : '−'}${Math.abs(h) % 1 ? Math.abs(h
 
   const params = new URLSearchParams(location.search);
   const tParam = params.get('t') ? Date.parse(params.get('t')) : NaN;
-  if (!Number.isNaN(tParam)) {
-    const y = new Date(tParam).getUTCFullYear();
-    if (y !== year) { year = y; route = buildRoute(year); buildRoute_(); }
-    setMode('preview', tParam);
-  } else if (params.get('mode') === 'preview') setMode('preview');
-  else setMode('live');
+  const yParam = params.get('y') ? parseInt(params.get('y'), 10) : NaN;
+  if (!Number.isNaN(tParam)) { applyYear(new Date(tParam).getUTCFullYear()); setMode('preview', tParam); }
+  else if (!Number.isNaN(yParam) && yParam !== currentYear) { setYear(yParam); }
+  else { applyYear(currentYear); setMode(params.get('mode') === 'preview' ? 'preview' : 'live'); }
   requestAnimationFrame(frame);
 })();
 

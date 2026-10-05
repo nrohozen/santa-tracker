@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   STOPS, HOUR, MIN, buildRoute, stateAt, subsolarPoint, terminatorLat, nightPolygon, antisolarLon,
   slerp, haversineKm, decodeTopo, missionYear, arrivalForOffset, telemetry, missionLog, track, wrapLon,
+  SKIPPED, stopsForYear, routeChanges, TZ_HISTORY, orderBand, hash32, mulberry32, ARCHIVE_YEARS,
 } from '../src/engine.mjs';
 
 const YEAR = 2026;
@@ -155,8 +156,79 @@ test('arrivalForOffset finds the viewer band', () => {
   assert.ok([12, 13].includes(odd.utc)); assert.equal(odd.exact, false);
 });
 
+test('every country is on the route unless it is on the skip list', () => {
+  const countries = new Set(STOPS.map(s => s.country));
+  assert.ok(countries.size >= 190, `only ${countries.size} countries`);
+  for (const k of SKIPPED) assert.ok(!countries.has(k.country), `${k.country} is both skipped and visited`);
+  for (const must of ['Tuvalu', 'Vatican City', 'Palestine', 'Bhutan', 'Haiti', 'Guyana', 'Eritrea', 'Luxembourg']) assert.ok(countries.has(must), must);
+  assert.ok(!countries.has('North Korea'));
+});
+
+test('historical offsets: Samoa, Fiji, Brazil, Kazakhstan, Jordan, Sudan', () => {
+  const by = (y, n) => stopsForYear(y).find(s => s.name === n).utc;
+  assert.equal(by(2020, 'Apia'), 14); assert.equal(by(2021, 'Apia'), 13);
+  assert.equal(by(2021, 'Suva'), 13); assert.equal(by(2022, 'Suva'), 12);
+  assert.equal(by(2018, 'São Paulo'), -2); assert.equal(by(2019, 'São Paulo'), -3);
+  assert.equal(by(2023, 'Almaty'), 6); assert.equal(by(2024, 'Almaty'), 5);
+  assert.equal(by(2021, 'Amman'), 2); assert.equal(by(2022, 'Amman'), 3);
+  assert.equal(by(2016, 'Khartoum'), 3); assert.equal(by(2017, 'Khartoum'), 2);
+  assert.equal(by(2016, "Nuku'alofa"), 14); assert.equal(by(2017, "Nuku'alofa"), 13);
+  for (const h of TZ_HISTORY) assert.ok(STOPS.some(s => s.name === h.name), `${h.name} is a real stop`);
+});
+
+test('routeChanges reports exactly the cities whose clocks moved', () => {
+  const c2019 = routeChanges(2019);
+  assert.deepEqual(c2019.map(c => c.name).sort(), ['Brasília', 'Rio de Janeiro', 'São Paulo']);
+  assert.equal(c2019[0].from, -2); assert.equal(c2019[0].to, -3); assert.match(c2019[0].why, /Brazil/);
+  assert.deepEqual(routeChanges(2020), []);
+  assert.deepEqual(routeChanges(2024).map(c => c.name), ['Almaty']);
+  assert.deepEqual(routeChanges(2022).map(c => c.name).sort(), ['Amman', 'Damascus', 'Suva']);
+});
+
+test('every archive year builds a valid, distinct, deterministic route', () => {
+  const seen = new Set();
+  for (let y = YEAR - ARCHIVE_YEARS; y <= YEAR; y++) {
+    const r1 = buildRoute(y), r2 = buildRoute(y);
+    assert.deepEqual(r1.waypoints.map(w => w.name), r2.waypoints.map(w => w.name), `${y} deterministic`);
+    const key = r1.waypoints.map(w => w.name).join('>');
+    assert.ok(!seen.has(key), `${y} route repeats an earlier year`);
+    seen.add(key);
+    assert.equal(r1.stopCount, STOPS.length);
+    for (let i = 1; i < r1.waypoints.length; i++) assert.ok(r1.waypoints[i].arrive > r1.waypoints[i - 1].arrive, `${y} order`);
+    for (const s of r1.waypoints.filter(w => !w.pole)) {
+      const localMs = ((s.arrive + s.utc * HOUR) % 86_400_000 + 86_400_000) % 86_400_000;
+      assert.ok(Math.min(localMs, 86_400_000 - localMs) / MIN <= 30 + 1e-6, `${y} ${s.name} off midnight`);
+    }
+    let prev = stateAt(r1, r1.launch);
+    for (let t = r1.launch; t <= r1.home; t += 15 * MIN) {
+      const s = stateAt(r1, t);
+      assert.ok(s.presents >= prev.presents && s.km >= prev.km - 1e-6, `${y} monotone`);
+      prev = s;
+    }
+    assert.equal(stateAt(r1, r1.home).presents, r1.totalPresents);
+  }
+});
+
+test('clock changes move a city in the order: São Paulo leaves the UTC-2 slot in 2019', () => {
+  const r18 = buildRoute(2018), r19 = buildRoute(2019);
+  const w = (r, n) => r.waypoints.find(x => x.name === n);
+  assert.ok(w(r18, 'São Paulo').arrive < w(r18, 'Buenos Aires').arrive - 25 * MIN, '2018: São Paulo a band ahead of Buenos Aires');
+  assert.equal(w(r19, 'São Paulo').utc, w(r19, 'Buenos Aires').utc, '2019: same band');
+});
+
+test('orderBand strategies and the seeded PRNG are stable', () => {
+  const a = mulberry32(hash32(2019, 3)), b = mulberry32(hash32(2019, 3));
+  assert.equal(a(), b());
+  assert.notEqual(hash32(2019, 3), hash32(2020, 3));
+  const group = STOPS.filter(s => s.utc === 1);
+  const o = orderBand(group, 2019, 7, null);
+  assert.equal(o.order.length, group.length);
+  assert.equal(new Set(o.order.map(s => s.name)).size, group.length);
+  assert.ok(['nearest', 'north-south', 'south-north', 'east-west'].includes(o.strategy));
+});
+
 test('telemetry, log and track are deterministic and bounded', () => {
-  const t = stops.find(s => s.name === 'Paris').arrive + 2 * MIN;
+  const t = stops.find(s => s.name === 'Paris').arrive + 20 * 1000; // the UTC+1 band is dense: ~80 s per city
   const a = telemetry(stateAt(route, t)), b = telemetry(stateAt(route, t));
   assert.deepEqual(a, b);
   assert.ok(a.sackPct >= 0 && a.sackPct <= 100);

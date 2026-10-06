@@ -151,7 +151,8 @@ export function sceneSpec(stop, year) {
     const ang = rnd() * Math.PI * 2;
     // core types cluster toward the centre, houses and trees spread outward
     const bias = CORE_TYPES.has(type) ? 1.6 : TREE_TYPES.has(type) ? 0.7 : 1.0;
-    let r = radiusKm * Math.pow(rnd(), bias / 2);
+    // a third of the town sits in a dense old-town ring (0.35-1.6 km) so the ground right under the sleigh is busy, the rest spreads out
+    let r = (props.length % 3 === 0) ? 0.35 + 1.25 * Math.sqrt(rnd()) : radiusKm * Math.pow(rnd(), bias / 2);
     if (type === 'water') r = radiusKm * (0.75 + 0.2 * rnd());
     if (r < exclusion) r = exclusion + rnd() * 0.3;
     if (r > radiusKm) r = radiusKm;

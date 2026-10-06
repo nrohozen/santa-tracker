@@ -23,16 +23,17 @@ window.SantaScenery = (() => {
     stone: () => canvasTex('stone', 128, 128, (g, w, h) => { g.fillStyle = '#cfc4b0'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,.12)'; for (let y = 0; y < h; y += 16) { g.fillRect(0, y, w, 1); for (let x = (y / 16 % 2) * 12; x < w; x += 24) g.fillRect(x, y, 1, 16); } noise(g, w, h, 400, .08); }, 4, 4),
     marble: () => canvasTex('marble', 128, 128, (g, w, h) => { g.fillStyle = '#e6e1d6'; g.fillRect(0, 0, w, h); noise(g, w, h, 500, .06); }, 2, 2),
     glass: () => canvasTex('glass', 128, 128, (g, w, h) => { g.fillStyle = '#2a3140'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.06)'; for (let y = 0; y < h; y += 12) g.fillRect(0, y, w, 1); for (let x = 0; x < w; x += 10) g.fillRect(x, 0, 1, h); }, 3, 6),
-    snow: () => canvasTex('snow', 256, 256, (g, w, h) => { g.fillStyle = '#d7dde9'; g.fillRect(0, 0, w, h); noise(g, w, h, 1200, .07); }, 40, 40),
-    earth: () => canvasTex('earth', 256, 256, (g, w, h) => { g.fillStyle = '#1a1d24'; g.fillRect(0, 0, w, h); noise(g, w, h, 900, .05); }, 40, 40),
+    snow: () => canvasTex('snow', 256, 256, (g, w, h) => { g.fillStyle = '#d7dde9'; g.fillRect(0, 0, w, h); noise(g, w, h, 1200, .07); const r = mulberry32(0x5A1E); for (let i = 0; i < 330; i++) { g.fillStyle = r() < .6 ? '#ffffff' : '#eef4ff'; g.fillRect(Math.floor(r() * w), Math.floor(r() * h), 1, 1); } }, 40, 40),
+    earth: () => canvasTex('earth', 256, 256, (g, w, h) => { g.fillStyle = '#1a1d24'; g.fillRect(0, 0, w, h); noise(g, w, h, 900, .05); g.fillStyle = 'rgba(255,220,170,0.09)'; for (let k = 0; k < w; k += 64) { g.fillRect(k, 0, 2, h); g.fillRect(0, k + 20, w, 2); } g.fillStyle = 'rgba(0,0,0,0.25)'; for (let k = 0; k < w; k += 64) g.fillRect(k + 2, 0, 1, h); }, 40, 40),
     thatch: () => canvasTex('thatch', 64, 64, (g, w, h) => { g.fillStyle = '#9a7a3a'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,.25)'; for (let x = 0; x < w; x += 4) g.fillRect(x, 0, 1, h); }, 4, 2),
     // lit-window emissive map: black border so UV (0,0) is dark; warm dots inside
-    windows: (warm) => canvasTex('win' + warm, 64, 64, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); const r = mulberry32(0xA11 + Math.round(warm * 100)); for (let y = 8; y < h - 6; y += 10) for (let x = 8; x < w - 6; x += 9) if (r() < warm) { g.fillStyle = r() < .75 ? '#ffd58a' : '#fff1cf'; g.fillRect(x, y, 5, 6); } }, 1, 1),
+    windows: (warm) => canvasTex('win' + warm, 64, 64, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); const r = mulberry32(0xA11 + Math.round(warm * 100)); for (let y = 8; y < h - 6; y += 10) for (let x = 8; x < w - 6; x += 9) { const u = r(); if (u < warm) { const v = r(); g.fillStyle = v < .55 ? '#ffd27a' : v < .85 ? '#fff1cf' : '#ffb55a'; g.fillRect(x, y, 5, 6); if (r() < .3) { g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(x, y, 2, 6); } } else if (u < warm + .35) { g.fillStyle = '#2a2420'; g.fillRect(x, y, 5, 6); } } }, 1, 1),
     windowsTiled: (warm) => canvasTex('winT' + warm, 64, 64, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); const r = mulberry32(0xB11 + Math.round(warm * 100)); for (let y = 4; y < h - 2; y += 10) for (let x = 4; x < w - 2; x += 9) if (r() < warm) { g.fillStyle = r() < .75 ? '#ffd58a' : '#fff1cf'; g.fillRect(x, y, 5, 6); } }, 3, 8),
     stripes: (i) => { const pairs = [['#1f7a4a', '#f2efe8'], ['#b3302a', '#f2efe8'], ['#2a5fb3', '#f2efe8'], ['#d9a441', '#2d6b4a'], ['#b3302a', '#d9a441']]; const [a, b] = pairs[i % pairs.length]; return canvasTex('stripe' + i, 64, 64, (g, w, h) => { g.fillStyle = a; g.fillRect(0, 0, w, h); g.fillStyle = b; for (let k = 0; k < 10; k += 2) g.fillRect(k * w / 10, 0, w / 10, h); }, 4, 1); },
     candy: () => canvasTex('candy', 64, 64, (g, w, h) => { g.fillStyle = '#f6f1e7'; g.fillRect(0, 0, w, h); g.fillStyle = '#e5484d'; for (let k = 0; k < 8; k += 2) g.fillRect(0, k * h / 8, w, h / 8); }, 1, 6),
     clock: () => canvasTex('clock', 64, 64, (g, w, h) => { g.fillStyle = '#f4e9c8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#333'; g.lineWidth = 3; g.beginPath(); g.arc(32, 32, 26, 0, 7); g.stroke(); g.beginPath(); g.moveTo(32, 32); g.lineTo(32, 12); g.moveTo(32, 32); g.lineTo(46, 36); g.stroke(); }, 1, 1),
     arches: () => canvasTex('arches', 128, 128, (g, w, h) => { g.fillStyle = '#cfbfa2'; g.fillRect(0, 0, w, h); g.fillStyle = '#4a3b2c'; for (let row = 0; row < 3; row++) for (let x = 6; x < w; x += 22) { g.beginPath(); g.arc(x + 7, row * 42 + 24, 7, PI, 0); g.lineTo(x + 14, row * 42 + 40); g.lineTo(x, row * 42 + 40); g.closePath(); g.fill(); } }, 12, 1),
+    smoke: () => canvasTex('smoke', 64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(200,205,215,0.9)'); gr.addColorStop(.5, 'rgba(200,205,215,0.35)'); gr.addColorStop(1, 'rgba(200,205,215,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }),
     glow: () => canvasTex('glow', 64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,200,1)'); gr.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }),
   };
 
@@ -53,8 +54,8 @@ window.SantaScenery = (() => {
     rust: std({ color: '#c0362c', roughness: .6, metalness: .2 }),
     wood: std({ color: '#6b4424' }),
     trunk: std({ color: '#4a3220' }),
-    glass: std({ map: TEX.glass(), emissive: '#ffffff', emissiveMap: TEX.windowsTiled(.5), emissiveIntensity: .9, roughness: .5, metalness: .2 }),
-    glassWarm: std({ map: TEX.glass(), emissive: '#ffffff', emissiveMap: TEX.windowsTiled(.7), emissiveIntensity: 1.1, roughness: .5, metalness: .2 }),
+    glass: std({ map: TEX.glass(), emissive: '#ffffff', emissiveMap: TEX.windowsTiled(.5), emissiveIntensity: 1.25, roughness: .5, metalness: .2 }),
+    glassWarm: std({ map: TEX.glass(), emissive: '#ffffff', emissiveMap: TEX.windowsTiled(.7), emissiveIntensity: 1.45, roughness: .5, metalness: .2 }),
     dark: std({ color: '#1b2436' }),
     snow: std({ color: '#dfe6f2', roughness: 1 }),
     water: std({ color: '#0c1a2e', metalness: .6, roughness: .25 }),
@@ -90,14 +91,14 @@ window.SantaScenery = (() => {
 
   // ---------- geometry merging for instanced props ----------
   // parts: [{ geo, color: '#hex', uv: 'tile'|'zero', tile: [u, v], m: Matrix4 }]
-  function mergeParts(parts) {
+  function mergeParts(parts, snowRoofs) {
     const pos = [], nor = [], uv = [], col = [];
     const c = new T.Color();
     for (const p of parts) {
       const g = p.geo.index ? p.geo.toNonIndexed() : p.geo;
       if (p.m) g.applyMatrix4(p.m);
       const pa = g.attributes.position, na = g.attributes.normal, ua = g.attributes.uv;
-      c.set(p.color);
+      c.set(snowRoofs && p.roof ? '#dfe6f2' : p.color);
       const [tu, tv] = p.tile || [1, 1];
       for (let i = 0; i < pa.count; i++) {
         pos.push(pa.getX(i), pa.getY(i), pa.getZ(i)); nor.push(na.getX(i), na.getY(i), na.getZ(i));
@@ -130,30 +131,31 @@ window.SantaScenery = (() => {
   const WALL = '#9aa3b2', ROOF = '#3a3f4f', LEAF = '#2a5a3a', TRUNK = '#5a3a22', STONE = '#cfc4b0', GOLD = '#e8bb5e', SAND = '#c9a56a', WHITE = '#ece8df', GREENROOF = '#3a7a56', TEAL = '#2d6b7a';
   const PROPS = {
     block: () => [{ geo: B_(1, 1, 1), color: WALL, uv: 'tile', tile: [3, 4], skipTop: true, m: at(0, .5, 0) }],
-    tower: () => [{ geo: B_(1, 1, 1), color: '#6d7a92', uv: 'tile', tile: [4, 9], skipTop: true, m: at(0, .5, 0) }, { geo: B_(.6, .06, .6), color: ROOF, uv: 'zero', m: at(0, 1.03, 0) }],
-    house: () => [{ geo: B_(1, .68, 1), color: '#c9b79a', uv: 'tile', tile: [2, 1.5], skipTop: true, m: at(0, .34, 0) }, { geo: K_(.85, .34, 4), color: ROOF, uv: 'zero', m: at(0, .85, 0, 1, 1, 1, PI / 4) }],
-    spire: () => [{ geo: B_(.6, .45, 1), color: STONE, uv: 'tile', tile: [2, 2], skipTop: true, m: at(0, .225, .1) }, { geo: K_(.42, .2, 4), color: ROOF, uv: 'zero', m: at(0, .55, .1, 1, 1, 1, PI / 4) }, { geo: B_(.26, .55, .26), color: STONE, uv: 'tile', tile: [1, 3], skipTop: true, m: at(0, .275, -.35) }, { geo: K_(.19, .42, 4), color: ROOF, uv: 'zero', m: at(0, .76, -.35, 1, 1, 1, PI / 4) }, { geo: B_(.03, .1, .03), color: GOLD, uv: 'zero', m: at(0, 1, -.35) }],
+    tower: () => [{ geo: B_(1, 1, 1), color: '#6d7a92', uv: 'tile', tile: [4, 9], skipTop: true, m: at(0, .5, 0) }, { geo: B_(.6, .06, .6), color: ROOF, roof: true, uv: 'zero', m: at(0, 1.03, 0) }],
+    house: () => [{ geo: B_(1, .68, 1), color: '#c9b79a', uv: 'tile', tile: [2, 1.5], skipTop: true, m: at(0, .34, 0) }, { geo: K_(.85, .34, 4), color: ROOF, roof: true, uv: 'zero', m: at(0, .85, 0, 1, 1, 1, PI / 4) }, { geo: B_(.12, .32, .12), color: '#6b4a3a', uv: 'zero', m: at(.28, .78, -.22) }],
+    spire: () => [{ geo: B_(.6, .45, 1), color: STONE, uv: 'tile', tile: [2, 2], skipTop: true, m: at(0, .225, .1) }, { geo: K_(.42, .2, 4), color: ROOF, roof: true, uv: 'zero', m: at(0, .55, .1, 1, 1, 1, PI / 4) }, { geo: B_(.26, .55, .26), color: STONE, uv: 'tile', tile: [1, 3], skipTop: true, m: at(0, .275, -.35) }, { geo: K_(.19, .42, 4), color: ROOF, roof: true, uv: 'zero', m: at(0, .76, -.35, 1, 1, 1, PI / 4) }, { geo: B_(.03, .1, .03), color: GOLD, uv: 'zero', m: at(0, 1, -.35) }],
     onion: () => [{ geo: C_(.3, .32, .55, 12), color: WHITE, uv: 'tile', tile: [3, 2], m: at(0, .275, 0) }, { geo: onionGeo(.36, .4), color: GOLD, uv: 'zero', m: at(0, .55, 0) }, { geo: C_(.015, .04, .08, 6), color: GOLD, uv: 'zero', m: at(0, .96, 0) }],
     minaret: () => [{ geo: C_(.12, .15, .75, 10), color: WHITE, uv: 'zero', m: at(0, .375, 0) }, { geo: new T.TorusGeometry(.17, .03, 6, 12), color: WHITE, uv: 'zero', m: new T.Matrix4().compose(V(0, .62, 0), new T.Quaternion().setFromEuler(new T.Euler(PI / 2, 0, 0)), V(1, 1, 1)) }, { geo: K_(.14, .25, 10), color: TEAL, uv: 'zero', m: at(0, .875, 0) }],
     dome: () => [{ geo: B_(1, .5, 1), color: SAND, uv: 'tile', tile: [2, 1.5], skipTop: true, m: at(0, .25, 0) }, { geo: H_(.42), color: TEAL, uv: 'zero', m: at(0, .5, 0, 1, 1.2, 1) }],
-    pagoda: () => [{ geo: B_(.6, .3, .6), color: '#8a3a2a', uv: 'tile', tile: [2, 1], skipTop: true, m: at(0, .15, 0) }, { geo: K_(.7, .18, 4), color: ROOF, uv: 'zero', m: at(0, .39, 0, 1, 1, 1, PI / 4) }, { geo: B_(.45, .22, .45), color: '#8a3a2a', uv: 'tile', tile: [2, 1], skipTop: true, m: at(0, .59, 0) }, { geo: K_(.55, .16, 4), color: ROOF, uv: 'zero', m: at(0, .78, 0, 1, 1, 1, PI / 4) }, { geo: B_(.3, .14, .3), color: '#8a3a2a', uv: 'zero', m: at(0, .93, 0) }, { geo: K_(.4, .14, 4), color: ROOF, uv: 'zero', m: at(0, 1.07, 0, 1, 1, 1, PI / 4) }],
+    pagoda: () => [{ geo: B_(.6, .3, .6), color: '#8a3a2a', uv: 'tile', tile: [2, 1], skipTop: true, m: at(0, .15, 0) }, { geo: K_(.7, .18, 4), color: ROOF, roof: true, uv: 'zero', m: at(0, .39, 0, 1, 1, 1, PI / 4) }, { geo: B_(.45, .22, .45), color: '#8a3a2a', uv: 'tile', tile: [2, 1], skipTop: true, m: at(0, .59, 0) }, { geo: K_(.55, .16, 4), color: ROOF, roof: true, uv: 'zero', m: at(0, .78, 0, 1, 1, 1, PI / 4) }, { geo: B_(.3, .14, .3), color: '#8a3a2a', uv: 'zero', m: at(0, .93, 0) }, { geo: K_(.4, .14, 4), color: ROOF, roof: true, uv: 'zero', m: at(0, 1.07, 0, 1, 1, 1, PI / 4) }],
     stupa: () => [{ geo: C_(.5, .55, .2, 12), color: WHITE, uv: 'zero', m: at(0, .1, 0) }, { geo: S_(.4), color: GOLD, uv: 'zero', m: at(0, .55, 0, 1, 1.1, 1) }, { geo: K_(.12, .3, 8), color: GOLD, uv: 'zero', m: at(0, 1.05, 0) }],
     chhatri: () => [{ geo: B_(1, .06, 1), color: STONE, uv: 'zero', m: at(0, .03, 0) }, ...[[-.4, -.4], [.4, -.4], [-.4, .4], [.4, .4]].map(([x, z]) => ({ geo: C_(.06, .06, .6, 6), color: STONE, uv: 'zero', m: at(x, .36, z) })), { geo: B_(1, .08, 1), color: STONE, uv: 'zero', m: at(0, .7, 0) }, { geo: H_(.42), color: SAND, uv: 'zero', m: at(0, .74, 0, 1, .7, 1) }],
-    plaza: () => [{ geo: B_(1, .5, 1), color: '#e2d2b0', uv: 'tile', tile: [3, 1.5], skipTop: true, m: at(0, .25, 0) }, { geo: B_(.22, .95, .22), color: '#e2d2b0', uv: 'tile', tile: [1, 3], skipTop: true, m: at(-.38, .475, .38) }, { geo: B_(.22, .95, .22), color: '#e2d2b0', uv: 'tile', tile: [1, 3], skipTop: true, m: at(.38, .475, .38) }, { geo: H_(.22), color: TEAL, uv: 'zero', m: at(0, .5, -.1) }, { geo: K_(.14, .2, 4), color: ROOF, uv: 'zero', m: at(-.38, 1.05, .38, 1, 1, 1, PI / 4) }, { geo: K_(.14, .2, 4), color: ROOF, uv: 'zero', m: at(.38, 1.05, .38, 1, 1, 1, PI / 4) }],
+    plaza: () => [{ geo: B_(1, .5, 1), color: '#e2d2b0', uv: 'tile', tile: [3, 1.5], skipTop: true, m: at(0, .25, 0) }, { geo: B_(.22, .95, .22), color: '#e2d2b0', uv: 'tile', tile: [1, 3], skipTop: true, m: at(-.38, .475, .38) }, { geo: B_(.22, .95, .22), color: '#e2d2b0', uv: 'tile', tile: [1, 3], skipTop: true, m: at(.38, .475, .38) }, { geo: H_(.22), color: TEAL, uv: 'zero', m: at(0, .5, -.1) }, { geo: K_(.14, .2, 4), color: ROOF, roof: true, uv: 'zero', m: at(-.38, 1.05, .38, 1, 1, 1, PI / 4) }, { geo: K_(.14, .2, 4), color: ROOF, roof: true, uv: 'zero', m: at(.38, 1.05, .38, 1, 1, 1, PI / 4) }],
     adobe: () => [{ geo: B_(1, 1, 1), color: '#c08a56', uv: 'tile', tile: [1, 1], skipTop: true, m: at(0, .5, 0) }, { geo: B_(.3, .3, .3), color: '#c08a56', uv: 'zero', m: at(.25, 1.1, -.2) }],
     hut: () => [{ geo: C_(.4, .42, .5, 10), color: '#a4703c', uv: 'zero', m: at(0, .25, 0) }, { geo: K_(.6, .5, 10), color: '#9a7a3a', uv: 'zero', m: at(0, .75, 0) }],
-    stilt: () => [...[[-.35, -.35], [.35, -.35], [-.35, .35], [.35, .35]].map(([x, z]) => ({ geo: B_(.06, .4, .06), color: TRUNK, uv: 'zero', m: at(x, .2, z) })), { geo: B_(1, .45, 1), color: '#b08a5a', uv: 'tile', tile: [1, 1], skipTop: true, m: at(0, .625, 0) }, { geo: K_(.8, .3, 4), color: '#9a7a3a', uv: 'zero', m: at(0, 1, 0, 1, 1, 1, PI / 4) }],
-    pine: () => [{ geo: C_(.06, .08, .3, 6), color: TRUNK, uv: 'zero', m: at(0, .15, 0) }, { geo: K_(.5, .45, 7), color: LEAF, uv: 'zero', m: at(0, .45, 0) }, { geo: K_(.38, .38, 7), color: LEAF, uv: 'zero', m: at(0, .7, 0) }, { geo: K_(.25, .32, 7), color: '#3a7a52', uv: 'zero', m: at(0, .94, 0) }],
+    stilt: () => [...[[-.35, -.35], [.35, -.35], [-.35, .35], [.35, .35]].map(([x, z]) => ({ geo: B_(.06, .4, .06), color: TRUNK, uv: 'zero', m: at(x, .2, z) })), { geo: B_(1, .45, 1), color: '#b08a5a', uv: 'tile', tile: [1, 1], skipTop: true, m: at(0, .625, 0) }, { geo: K_(.8, .3, 4), color: '#9a7a3a', roof: true, uv: 'zero', m: at(0, 1, 0, 1, 1, 1, PI / 4) }],
+    pine: () => [{ geo: C_(.06, .08, .3, 6), color: TRUNK, uv: 'zero', m: at(0, .15, 0) }, { geo: K_(.5, .45, 7), color: LEAF, uv: 'zero', m: at(0, .45, 0) }, { geo: K_(.38, .38, 7), color: LEAF, uv: 'zero', m: at(0, .7, 0) }, { geo: K_(.25, .32, 7), color: '#3a7a52', roof: true, uv: 'zero', m: at(0, .94, 0) }],
     palm: () => [{ geo: C_(.05, .08, .9, 6), color: '#8a6a40', uv: 'zero', m: new T.Matrix4().compose(V(.08, .45, 0), new T.Quaternion().setFromEuler(new T.Euler(0, 0, -.18)), V(1, 1, 1)) }, ...[0, 1, 2, 3, 4, 5].map(i => ({ geo: B_(.7, .03, .18), color: '#3f8a4a', uv: 'zero', m: new T.Matrix4().compose(V(.16 + Math.cos(i * PI / 3) * .3, .93, Math.sin(i * PI / 3) * .3), new T.Quaternion().setFromEuler(new T.Euler(0, -i * PI / 3, -.35)), V(1, 1, 1)) }))],
     baobab: () => [{ geo: C_(.22, .36, .7, 9), color: '#7a6248', uv: 'zero', m: at(0, .35, 0) }, { geo: S_(.45), color: '#6a7a4a', uv: 'zero', m: at(0, .8, 0, 1, .5, 1) }],
     acacia: () => [{ geo: C_(.05, .09, .55, 6), color: TRUNK, uv: 'zero', m: at(0, .275, 0) }, { geo: C_(.5, .3, .25, 10), color: '#5a7a3a', uv: 'zero', m: at(0, .675, 0) }],
   };
   const geoCache = new Map();
-  function propGeometry(type) {
-    if (!geoCache.has(type)) { const g = mergeParts(PROPS[type]()); shared.add(g); geoCache.set(type, g); }
-    return geoCache.get(type);
+  function propGeometry(type, snowRoofs = false) {
+    const key = type + (snowRoofs ? ':snow' : '');
+    if (!geoCache.has(key)) { const g = mergeParts(PROPS[type](), snowRoofs); shared.add(g); geoCache.set(key, g); }
+    return geoCache.get(key);
   }
-  const propMaterial = std({ vertexColors: true, roughness: .9, emissive: '#ffffff', emissiveMap: TEX.windows(.55), emissiveIntensity: .9 });
+  const propMaterial = std({ vertexColors: true, roughness: .9, emissive: '#ffffff', emissiveMap: TEX.windows(.55), emissiveIntensity: 1.35 });
   const propMaterialLite = std({ vertexColors: true, roughness: .9 });
   shared.add(propMaterial); shared.add(propMaterialLite);
   const TINTS = ['#ffffff', '#f3e6cf', '#e0c2b5', '#c9d1e0'].map(c => new T.Color(c));
@@ -164,7 +166,7 @@ window.SantaScenery = (() => {
   function groundGeometry(R) {
     const rings = 20, rad = 64; const pos = [], uv = [], idx = [];
     for (let i = 0; i <= rings; i++) { const r = R * i / rings; const sag = 6371 - Math.sqrt(6371 * 6371 - r * r); for (let j = 0; j < rad; j++) { const a = j / rad * 2 * PI; const x = Math.cos(a) * r, z = Math.sin(a) * r; pos.push(x, -sag, z); uv.push(x / R * 20, z / R * 20); } }
-    for (let i = 0; i < rings; i++) for (let j = 0; j < rad; j++) { const a = i * rad + j, b = i * rad + (j + 1) % rad, c = (i + 1) * rad + j, d = (i + 1) * rad + (j + 1) % rad; if (i > 0) idx.push(a, c, b); idx.push(b, c, d); }
+    for (let i = 0; i < rings; i++) for (let j = 0; j < rad; j++) { const a = i * rad + j, b = i * rad + (j + 1) % rad, c = (i + 1) * rad + j, d = (i + 1) * rad + (j + 1) % rad; if (i > 0) idx.push(a, b, c); idx.push(b, d, c); }
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); return g;
   }
   const STREET_STYLE = { european: 'radial', eastern: 'radial', 'middle-east': 'radial', nordic: 'radial', 'north-american': 'grid', 'east-asia': 'grid', latin: 'grid', 'south-asia': 'grid', sahel: 'blobs', african: 'blobs', island: 'blobs', 'tropical-asia': 'blobs' };
@@ -180,6 +182,72 @@ window.SantaScenery = (() => {
     });
   }
 
+  // ---------- lights as points: lamps, Christmas strings, uplights, smoke ----------
+  // Sizes are computed from the distance in km, recovered from the model matrix scale, so the same shader works
+  // whether the diorama is drawn in km (harness) or scaled onto the globe (the app).
+  const PR = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 1.5);
+  function pointMat(o) {
+    const m = new T.ShaderMaterial({
+      uniforms: { uK: { value: o.k }, uMin: { value: o.min }, uMax: { value: o.max }, uPR: { value: PR }, uTime: { value: 0 }, uOpacity: { value: o.opacity == null ? 1 : o.opacity }, map: { value: o.map || null } },
+      defines: Object.assign({}, o.twinkle ? { TWINKLE: 1 } : {}, o.map ? { USE_MAP_TEX: 1 } : {}, o.soft ? { SOFT: 1 } : {}),
+      vertexShader: `uniform float uK, uMin, uMax, uPR, uTime; attribute vec3 color; attribute float phase; attribute float sizeMul; varying vec3 vC; varying float vA;
+        void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); float sc = length(vec3(modelMatrix[0])); float dKm = max(1e-4, -mv.z / sc);
+          gl_PointSize = clamp(uK / dKm, uMin, uMax) * uPR * sizeMul; gl_Position = projectionMatrix * mv; vC = color;
+          #ifdef TWINKLE
+            vA = 0.55 + 0.45 * sin(uTime * 2.6 + phase * 6.2832);
+          #else
+            vA = 1.0;
+          #endif
+        }`,
+      fragmentShader: `uniform float uOpacity; uniform sampler2D map; varying vec3 vC; varying float vA;
+        void main(){ vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0; if (r > 1.0) discard;
+          #ifdef USE_MAP_TEX
+            float a = texture2D(map, gl_PointCoord).a;
+          #else
+            float a = pow(1.0 - r, 1.6);
+          #endif
+          #ifdef SOFT
+            a *= 0.55 + 0.45 * (1.0 - r);
+          #endif
+          gl_FragColor = vec4(vC, a * vA * uOpacity); }`,
+      transparent: true, depthWrite: false, blending: o.additive === false ? T.NormalBlending : T.AdditiveBlending, fog: false,
+    });
+    return m;
+  }
+  function pointsFrom(list, mat) { // list: [{x,y,z,c:[r,g,b],ph,s}]
+    const n = list.length, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), ph = new Float32Array(n), sm = new Float32Array(n);
+    list.forEach((p, i) => { pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z; col[i * 3] = p.c[0]; col[i * 3 + 1] = p.c[1]; col[i * 3 + 2] = p.c[2]; ph[i] = p.ph || 0; sm[i] = p.s || 1; });
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3)); g.setAttribute('phase', new T.BufferAttribute(ph, 1)); g.setAttribute('sizeMul', new T.BufferAttribute(sm, 1));
+    const pts = new T.Points(g, mat); pts.frustumCulled = false; return pts;
+  }
+  const rgb = hex => { const c = new T.Color(hex); return [c.r, c.g, c.b]; };
+  const LAMP = rgb('#ffd9a0'), XMAS = ['#ff3b30', '#2fd36b', '#ffd23a', '#3b8bff', '#fff6e0', '#ff7ad9'].map(rgb);
+  // the world-space position of a point given in a prop's unit frame (x,y,z in [-.5,.5]x[0,1]x[-.5,.5])
+  function propPoint(p, ux, uy, uz) { const cs = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0); const lx = ux * p.w, lz = uz * p.d; return { x: p.x + lx * cs + lz * sn, y: uy * p.h, z: p.z - lx * sn + lz * cs }; }
+  // lamp positions follow the same street pattern as the glow texture
+  function lampPositions(style, radiusKm, rnd) {
+    const out = [], R = radiusKm * 0.95;
+    const push = (x, z) => { if (Math.hypot(x, z) < R) out.push({ x, y: 0.006, z, c: LAMP, s: 1 }); };
+    if (style === 'radial') { for (let rr = 0.25; rr < R; rr += 0.55 * (1 + rr / R)) { const n = Math.max(8, Math.round(rr * 22)); for (let i = 0; i < n; i++) { const a = i / n * 2 * PI + rnd() * .02; if (rnd() < 0.75) push(Math.cos(a) * rr, Math.sin(a) * rr); } } for (let a = 0; a < 14; a++) { const t = a / 14 * 2 * PI + (rnd() - .5) * .1; for (let rr = 0.2; rr < R; rr += 0.22) if (rnd() < 0.8) push(Math.cos(t) * rr, Math.sin(t) * rr); } }
+    else if (style === 'grid') { const step = 0.42; for (let x = -R; x <= R; x += step) for (let z = -R; z <= R; z += step * 1.25) { const onX = Math.round(x / step) % 2 === 0, onZ = Math.round(z / (step * 1.25)) % 2 === 0; if ((onX || onZ) && rnd() < 0.5 && Math.hypot(x, z) < R * (0.55 + 0.45 * rnd())) push(x + (rnd() - .5) * .05, z + (rnd() - .5) * .05); } }
+    else { for (let i = 0; i < 12; i++) { const cx = (rnd() - .5) * R * 1.4, cz = (rnd() - .5) * R * 1.4; for (let k = 0; k < 18; k++) push(cx + (rnd() - .5) * .9, cz + (rnd() - .5) * .9); } for (let i = 0; i < 6; i++) { const t = rnd() * 2 * PI; for (let rr = 0.2; rr < R; rr += 0.25) if (rnd() < 0.7) push(Math.cos(t) * rr, Math.sin(t) * rr); } }
+    // thin out so the total stays modest, denser toward the centre
+    return out.filter(p => rnd() < Math.max(0.25, 1 - Math.hypot(p.x, p.z) / R)).slice(0, 420);
+  }
+  // the town Christmas tree: dark cone, spiral of coloured lights, gold star
+  function townTree(x, z, hKm, rnd) {
+    const g = new T.Group(); g.name = 'towntree';
+    const cone = mesh(new T.ConeGeometry(hKm * 0.34, hKm, 10), materials.darkgreen, 0, hKm / 2 + hKm * 0.06, 0); g.add(cone);
+    g.add(cyl(hKm * 0.04, hKm * 0.05, hKm * 0.08, 6, materials.trunk, 0, 0, 0));
+    const star = mesh(new T.OctahedronGeometry(hKm * 0.07), std({ color: '#ffd27a', emissive: '#ffd27a', emissiveIntensity: 2.2, roughness: .4 }), 0, hKm * 1.08, 0); g.add(star);
+    const pts = []; const n = 110;
+    for (let i = 0; i < n; i++) { const t = i / n, a = t * 9 * PI; const r = hKm * 0.34 * (1 - t) * 1.02; pts.push({ x: Math.cos(a) * r, y: hKm * 0.06 + t * hKm, z: Math.sin(a) * r, c: XMAS[i % XMAS.length], ph: rnd(), s: 1.1 }); }
+    const lights = pointsFrom(pts, pointMat({ k: 1.6, min: 2.2, max: 7, twinkle: true })); g.add(lights);
+    g.position.set(x, 0, z); g.userData.lights = lights;
+    return g;
+  }
+  const TALL = new Set(['eiffel', 'tokyotower', 'burj', 'cntower', 'willis', 'petronas', 'pearl', 'needle', 'nseoul', 'mbs']);
+
   // ---------- build ----------
   function build(spec, opts = {}) {
     const g = new T.Group(); g.name = 'diorama';
@@ -189,6 +257,10 @@ window.SantaScenery = (() => {
     ground.name = 'ground'; ground.receiveShadow = true; g.add(ground);
     const streets = new T.Mesh(new T.CircleGeometry(spec.radiusKm * 1.3, 48), new T.MeshBasicMaterial({ map: streetTex(STREET_STYLE[spec.kit] || 'radial'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.05 + 0.12 * haze }));
     streets.rotation.x = -PI / 2; streets.position.y = 0.004; streets.name = 'streets'; g.add(streets);
+    streets.material.opacity = Math.min(0.05, 0.02 + 0.04 * haze); // ambient street light only; real lamps are points below
+    const seed = typeof hash32 === 'function' ? hash32(opts.year || 2026, (spec.radiusKm * 1000) | 0) : 1234;
+    const rnd = mulberry32(seed);
+    const houses = [], eaveCandidates = [];
 
     // group props by type
     const byType = new Map(); let caps = 0;
@@ -199,7 +271,8 @@ window.SantaScenery = (() => {
     if (caps) { capMesh = new T.InstancedMesh(snowcapGeo, materials.snow, caps); capMesh.castShadow = true; capMesh.name = 'snowcaps'; }
     for (const [type, list] of byType) {
       if (type === 'water' || !PROPS[type]) continue;
-      const im = new T.InstancedMesh(propGeometry(type), opts.lite ? propMaterialLite : propMaterial, list.length);
+      const im = new T.InstancedMesh(propGeometry(type, snow), opts.lite ? propMaterialLite : propMaterial, list.length);
+      if (type === 'house') { for (const p of list) { houses.push(p); if (rnd() < 0.4) eaveCandidates.push(p); } }
       im.castShadow = im.receiveShadow = true; im.name = 'props-' + type;
       list.forEach((p, i) => {
         q.setFromEuler(e.set(0, p.rot || 0, 0));
@@ -220,7 +293,46 @@ window.SantaScenery = (() => {
     } else {
       for (let i = 0; i < 4; i++) { const a = i / 4 * 2 * PI + .4; lights.push({ x: Math.cos(a) * 0.25, y: 0.004, z: Math.sin(a) * 0.25 }); }
     }
-    g.userData = { lights, kit: spec.kit, landmark: spec.landmark ? spec.landmark.id : null };
+    // --- street lamps (points) ---
+    const lamps = pointsFrom(lampPositions(STREET_STYLE[spec.kit] || 'radial', spec.radiusKm, rnd), pointMat({ k: 2.4, min: 2.6, max: 8, opacity: 1 }));
+    lamps.name = 'lamps'; g.add(lamps);
+    // --- Christmas lights on eaves (≤ 600 points) ---
+    const eave = [];
+    for (const p of eaveCandidates) { if (eave.length > 560) break; const pal = XMAS; for (const side of [-0.52, 0.52]) for (let u = -0.42; u <= 0.43; u += 0.14) { const q = propPoint(p, u, 0.7, side); eave.push({ x: q.x, y: q.y, z: q.z, c: pal[(eave.length + (side > 0 ? 3 : 0)) % pal.length], ph: rnd(), s: 0.9 }); } }
+    const xmas = eave.length ? pointsFrom(eave, pointMat({ k: 1.7, min: 2.2, max: 6, twinkle: true })) : null;
+    if (xmas) { xmas.name = 'xmas'; g.add(xmas); }
+    // --- town Christmas tree in the square, clear of the landmark footprint ---
+    const fp = spec.landmark ? (spec.landmark.footprintKm || 0.3) : 0.2;
+    const td = Math.max(0.12, fp * 0.6 + 0.03);
+    const tree = townTree(td * 0.77, td * 0.64, 0.012 + 0.006 * Math.min(1, spec.radiusKm / 16), rnd); g.add(tree);
+    // --- chimney smoke: 3 puffs per chimney on up to 60 houses, animated by tick(dt) ---
+    const chim = houses.slice().sort(() => rnd() - .5).slice(0, 60).map(p => propPoint(p, 0.28, 0.93, -0.22));
+    const puffs = []; const wind = { x: (rnd() - .5) * 0.003, z: (rnd() - .5) * 0.003 };
+    for (const c of chim) for (let k = 0; k < 3; k++) puffs.push({ cx: c.x, cy: c.y, cz: c.z, age: rnd() * 7, life: 6 + rnd() * 3, x: c.x, y: c.y, z: c.z });
+    const smokeMat = pointMat({ k: 3.2, min: 3, max: 90, map: TEX.smoke(), additive: false, opacity: .45 });
+    const smoke = pointsFrom(puffs.map(q => ({ x: q.x, y: q.y, z: q.z, c: [0.86, 0.87, 0.9], s: 1 })), smokeMat); smoke.name = 'smoke'; g.add(smoke);
+    // --- landmark glow: warm uplights at its feet, a red aviation light on the tall ones ---
+    const glows = [];
+    if (spec.landmark && B[spec.landmark.id]) {
+      const lm = g.getObjectByName('landmark-' + spec.landmark.id);
+      const bb = new T.Box3().setFromObject(lm); const top = isFinite(bb.max.y) ? bb.max.y : (spec.landmark.heightKm || 0.05);
+      const fr = Math.max(0.03, (spec.landmark.footprintKm || 0.3) * 0.3);
+      for (let i = 0; i < 4; i++) { const a = i / 4 * 2 * PI + .5; glows.push({ x: Math.cos(a) * fr, y: 0.012, z: Math.sin(a) * fr, c: [1, 0.78, 0.45], s: 1 }); }
+      if (TALL.has(spec.landmark.id)) glows.push({ x: 0, y: top + 0.002, z: 0, c: [1, 0.15, 0.1], s: 0.45, ph: 0.2 });
+    }
+    glows.push({ x: tree.position.x, y: 0.004, z: tree.position.z, c: [1, 0.85, 0.6], s: 0.6 });
+    const glowPts = pointsFrom(glows, pointMat({ k: 9, min: 14, max: 140, twinkle: true, opacity: .7, soft: true })); glowPts.name = 'glows'; g.add(glowPts);
+    // --- animation: smoke rises and drifts, lights twinkle ---
+    let time = 0; const sp = smoke.geometry.attributes.position, ss = smoke.geometry.attributes.sizeMul;
+    const tick = (dt) => {
+      dt = Math.min(dt || 0, 0.1); time += dt;
+      for (const m of [lamps.material, xmas && xmas.material, tree.userData.lights.material, glowPts.material]) if (m) m.uniforms.uTime.value = time;
+      for (let i = 0; i < puffs.length; i++) { const q = puffs[i]; q.age += dt; if (q.age > q.life) { q.age = 0; q.x = q.cx; q.y = q.cy; q.z = q.cz; } const k = q.age / q.life; q.y = q.cy + q.age * 0.0028; q.x = q.cx + q.age * wind.x + Math.sin(q.age * 1.7 + i) * 0.0006 * k; q.z = q.cz + q.age * wind.z; sp.setXYZ(i, q.x, q.y, q.z); ss.setX(i, 0.4 + 2.2 * k); }
+      sp.needsUpdate = true; ss.needsUpdate = true;
+      smokeMat.uniforms.uOpacity.value = 0.45;
+    };
+    tick(0);
+    g.userData = { lights, kit: spec.kit, landmark: spec.landmark ? spec.landmark.id : null, tick };
     return g;
   }
 
@@ -250,7 +362,7 @@ window.SantaScenery = (() => {
     g.add(cyl(0.004 * s, 0.017 * s, 0.19 * s, 4, mat, 0, legH, 0), cyl(0.0012 * s, 0.002 * s, 0.03 * s, 4, materials.steel, 0, 0.3 * s, 0));
     return g;
   }
-  B.eiffel = () => { const g = lattice(0.33, materials.amber); g.add(box(0.3, 0.003, 0.06, materials.darkgreen, 0, 0, 0.2)); return g; };
+  B.eiffel = (spec) => { const g = lattice(0.33, materials.amber); const snowy = !!(spec && spec.climate && spec.climate.snow); if (!snowy) { const lawn = box(0.22, 0.0008, 0.05, materials.darkgreen, 0, -0.0003, 0.17); lawn.castShadow = false; g.add(lawn); } return g; }; // the Champ de Mars: a lawn flush with the ground; under snow it is just snow
   B.tokyotower = () => { const g = lattice(0.333, materials.stripes[1]); const pg = new T.Mesh(propGeometry('pagoda'), propMaterial); pg.scale.set(0.03, 0.055, 0.03); pg.position.set(0.09, 0, 0.04); pg.castShadow = pg.receiveShadow = true; g.add(pg); return g; };
   B.stbasil = () => {
     const g = grp(box(0.07, 0.014, 0.07, materials.brick));

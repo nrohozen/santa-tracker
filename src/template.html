@@ -13,6 +13,7 @@
 <meta property="og:url" content="https://roho.foo/santa/">
 <meta name="theme-color" content="#5a3b22">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%85%3C/text%3E%3C/svg%3E">
+<script>(function(){var d=document.documentElement;d.classList.add("fonts-loading");var done=function(){d.classList.remove("fonts-loading")};function go(){if(!document.fonts){done();return}Promise.all([document.fonts.load('1em "Patrick Hand"'),document.fonts.load('700 1em "Mountains of Christmas"')]).then(function(){return document.fonts.ready}).then(done,done)}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",go);else go();setTimeout(done,1500)})();</script>
 <style>
 /*__FONTS__*/
 /*__STYLE__*/
@@ -81,10 +82,12 @@
   <section class="card mapcard window">
     <div class="views" role="group" aria-label="Point of view">
       <button id="view-map" class="chip is-on" aria-pressed="true" title="The whole world, from the North Pole's operations room">🗺 Mission control</button>
-      <button id="view-pov" class="chip" aria-pressed="false" title="Ride along: the view from just behind the sleigh, looking where Santa is going">🛷 From the sleigh</button>
+      <button id="view-pov" class="chip" aria-pressed="false" title="Santa's seat: the team ahead, the dash console, the city coming up">🛷 From the sleigh</button>
+      <button id="fullscreen" class="chip chip-aux" type="button" aria-pressed="false" title="Fill the screen with the view">⛶ Full screen</button>
+      <button id="bells" class="chip chip-aux" type="button" aria-pressed="false" title="Sleigh bells and wind, made on the spot">🔔 Bells: off</button>
     </div>
     <div id="povwrap" class="povwrap" hidden>
-    <canvas id="gl" class="gl" aria-label="The view from Santa's sleigh in 3D: the globe ahead, the night side, the next cities as lights. Drag to look around, scroll to climb, double-click to reset." hidden></canvas>
+    <canvas id="gl" class="gl" aria-label="The view from Santa's seat in 3D: the reindeer team ahead, the dash console, the globe and the city coming up." hidden></canvas>
     <svg id="pov" class="pov" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The view from Santa's sleigh: the curved horizon ahead, the night, the next cities as lights, and the reindeer team">
       <defs>
         <clipPath id="fp-clip"><path id="fp-ground-clip" d=""/></clipPath>
@@ -218,7 +221,7 @@
     <div class="how-body">
       <p><strong>The route.</strong> Santa leaves the Workshop at the North Pole and delivers at local midnight, so he has to sweep westward one time zone per hour: Kiritimati (UTC+14) first at 10:00 UTC on December 24, American Samoa (UTC−11) last at 11:00 UTC on December 25, then home. Inside each time zone the cities are spread across that zone's hour, with at most six minutes per city, and between cities the sleigh flies the great circle. <span id="how-totals"></span></p>
       <p><strong>Santa is all about efficiency.</strong> The order inside each zone is a travelling-salesman plan: nearest-neighbour tours starting from the cities closest to where the sleigh is coming from, polished with 2-opt until no two legs cross. The elves accept any plan within 6&nbsp;% of the best one they found, and the year's seed picks among those, so every Christmas is a different route and every route is a tight one. Each year's card shows how close it came to the best plan.</p>
-      <p><strong>Two views.</strong> <em>Mission control</em> is the whole world from the Workshop's operations room: a short tail behind the sleigh, and every delivered city stays lit. <em>From the sleigh</em> is a chase camera a little above and behind Santa, looking where he is going: a real perspective projection of the globe, so the horizon curves, the sun comes up over it only where it should, the night side is drawn on the ground, and the next cities appear as lights that grow as he closes in. Over a city the camera drops to sleigh height; the landmarks are the elves' low-poly impressions, and the reindeer are real (a CC0 model by Quaternius).</p>
+      <p><strong>Two views.</strong> <em>Mission control</em> is the whole world from the Workshop's operations room: a short tail behind the sleigh, and every delivered city stays lit. <em>From the sleigh</em> is Santa's seat, fixed: you look where he looks, over the team, with the navigation on the dash console. It is a real perspective projection of the globe, so the horizon curves, the sun comes up over it only where it should, and the night side is drawn on the ground. Over a city the sleigh drops to rooftop height; the landmarks are the elves' low-poly impressions, and the reindeer are real (a CC0 model by Quaternius). Sleigh bells are optional: the Bells button makes them on the spot, nothing is downloaded, and they stay off until you tap.</p>
       <p><strong>Every country.</strong> <span id="how-countries"></span></p>
       <p><strong>The archive.</strong> Each year's plan is seeded by the year, so 2019 looks the same for everyone, forever, and every year starts and ends at the Workshop. On top of that the stop list carries real history: Samoa (2021) and Fiji (2022) stopped observing summer time, Brazil abolished it in 2019, Tonga tried it exactly once in 2016, Morocco went to permanent UTC+1 in late 2018, Sudan and South Sudan each moved their clocks back an hour, Jordan and Syria stopped changing theirs in 2022, Greenland moved to UTC−2 in 2023, and Kazakhstan unified on UTC+5 in 2024. In each case the city's midnight moved, so its place in the route moved too. The night shading for a past year is that year's real sun.</p>
       <p><strong>The shading is real.</strong> The dark side of the map is computed from the actual position of the sun for the instant on the clock (its declination and the subsolar point), so in December the whole Arctic is in polar night. The dashed line is solar midnight. Santa stays within a couple of hours of it all night, and the gap you see is the difference between the sun and the time zones people actually chose.</p>
@@ -250,6 +253,7 @@
 /*__ASSETS__*/
 /*__SCENERY__*/
 /*__SLEIGH__*/
+/*__AUDIO__*/
 /*__VIEW3D__*/
 /*__UI__*/
 </script>

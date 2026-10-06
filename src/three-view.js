@@ -20,6 +20,7 @@ window.SantaGL = (() => {
   let route = null, fullTrack = [], last = null, lastOut = null, running = false, rafId = 0, lastFrameAt = 0;
   const clock = new THREE.Clock();
   const dioramas = new Map(); // name → { group, spec, stop, lights, at }
+  const lmRadius = new Map(); // city name → how far the landmark's builder sprawls from the centre (km), measured once built
   const look = { yaw: 0, pitch: 0, zoom: 1 };
   const cam = { ground: null, alt: 0.045, fwd: null, pitch: -28, roll: 0, prevHdg: null, bob: 0, blend: 0, city: null };
   const api = { labelSink: null };
@@ -61,12 +62,24 @@ window.SantaGL = (() => {
     far.camera = new THREE.PerspectiveCamera(60, 2, 0.0004, 80);
     skyDome = new THREE.Mesh(new THREE.SphereGeometry(60, 32, 16), new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, depthTest: false,
-      uniforms: { zenith: { value: new THREE.Color('#03050f') }, horizon: { value: new THREE.Color('#0e1626') }, up: { value: new THREE.Vector3(0, 1, 0) }, blend: { value: 0 } },
+      uniforms: { zenith: { value: new THREE.Color('#03050f') }, horizon: { value: new THREE.Color('#0e1626') }, up: { value: new THREE.Vector3(0, 1, 0) }, north: { value: new THREE.Vector3(0, 0, -1) }, east: { value: new THREE.Vector3(1, 0, 0) }, blend: { value: 0 }, aurora: { value: 0 }, time: { value: 0 }, glow: { value: 0 } },
       vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `uniform vec3 zenith, horizon, up; uniform float blend; varying vec3 vP;
-        void main(){ float h = clamp(dot(normalize(vP), up), -1.0, 1.0); float k = pow(clamp(h, 0.0, 1.0), 0.5);
+      fragmentShader: `uniform vec3 zenith, horizon, up, north, east; uniform float blend, aurora, time, glow; varying vec3 vP;
+        void main(){ vec3 d = normalize(vP); float h = clamp(dot(d, up), -1.0, 1.0); float k = pow(clamp(h, 0.0, 1.0), 0.5);
           vec3 hazy = mix(horizon, zenith, k); vec3 space = mix(vec3(0.008, 0.016, 0.04), zenith, k);
-          gl_FragColor = vec4(mix(space, hazy, blend), 1.0); }`,
+          vec3 col = mix(space, hazy, blend);
+          // city glow: a warm band just above the horizon when flying low over a town
+          col += vec3(0.30, 0.20, 0.12) * glow * exp(-max(h, 0.0) * 14.0) * step(0.0, h);
+          // aurora: curtains to the north, elevation 8-50 deg, slow drifting bands
+          if (aurora > 0.001 && h > 0.1 && h < 0.8) {
+            float az = atan(dot(d, east), dot(d, north));
+            float band = sin(az * 7.0 + time * 0.35) * 0.5 + 0.5; band *= sin(az * 3.0 - time * 0.2 + h * 9.0) * 0.5 + 0.5;
+            float curtain = smoothstep(0.1, 0.25, h) * (1.0 - smoothstep(0.45, 0.8, h));
+            float facing = smoothstep(-1.2, 0.3, cos(az));
+            float a = aurora * curtain * facing * (0.35 + 0.65 * band);
+            col += a * mix(vec3(0.15, 0.85, 0.45), vec3(0.45, 0.35, 0.85), smoothstep(0.3, 0.7, h)) * 0.55;
+          }
+          gl_FragColor = vec4(col, 1.0); }`,
     }));
     skyDome.renderOrder = -10; far.scene.add(skyDome);
 
@@ -119,34 +132,31 @@ window.SantaGL = (() => {
     near.scene = new THREE.Scene();
     near.camera = new THREE.PerspectiveCamera(60, 2, 1e-6, 0.03);
     near.scene.fog = new THREE.FogExp2(new THREE.Color('#0e1626'), 0);
-    hemi = new THREE.HemisphereLight(0x8090c0, 0x201810, 0.32); near.scene.add(hemi);
-    moon = new THREE.DirectionalLight(0xcfd8ff, 0.55); moon.castShadow = !lite;
+    hemi = new THREE.HemisphereLight(0x7d8499, 0x1b1511, 0.32); near.scene.add(hemi);
+    moon = new THREE.DirectionalLight(0xd9ddec, 0.55); moon.castShadow = !lite;
     moon.shadow.mapSize.set(lite ? 1024 : 2048, lite ? 1024 : 2048);
     const sc = moon.shadow.camera; sc.left = -2.2 * KM; sc.right = 2.2 * KM; sc.top = 2.2 * KM; sc.bottom = -2.2 * KM; sc.near = 0; sc.far = 0.012;
     moon.shadow.bias = -0.00035; moon.shadow.normalBias = 1.2e-7;
     near.scene.add(moon); near.scene.add(moon.target);
+    near.lantern = new THREE.PointLight(0xffd9a0, 1.6, 260 * MT, 2); near.scene.add(near.lantern); // the sleigh's own warm light on the rooftops below
+    near.nose = new THREE.PointLight(0xff3a2a, 1.2, 160 * MT, 2); near.scene.add(near.nose);
 
     // --- rig pass: metres, camera-relative ---
     rig.scene = new THREE.Scene();
     rig.camera = new THREE.PerspectiveCamera(60, 2, 0.25, 400);
     rig.scene.fog = new THREE.FogExp2(new THREE.Color('#0e1626'), 0);
-    rig.hemi = new THREE.HemisphereLight(0x8090c0, 0x201810, 0.32); rig.scene.add(rig.hemi);
-    rig.moon = new THREE.DirectionalLight(0xcfd8ff, 0.55); rig.moon.castShadow = !lite; rig.moon.shadow.mapSize.set(1024, 1024);
+    rig.hemi = new THREE.HemisphereLight(0x7d8499, 0x1b1511, 0.32); rig.scene.add(rig.hemi);
+    rig.moon = new THREE.DirectionalLight(0xd9ddec, 0.55); rig.moon.castShadow = !lite; rig.moon.shadow.mapSize.set(1024, 1024);
     const rc = rig.moon.shadow.camera; rc.left = -30; rc.right = 30; rc.top = 30; rc.bottom = -30; rc.near = 1; rc.far = 200; rig.moon.shadow.bias = -0.0008;
     rig.scene.add(rig.moon); rig.scene.add(rig.moon.target);
+    rig.fill = new THREE.DirectionalLight(0xffe9c8, 0.55); rig.fill.position.set(0, 3, 6); rig.fill.target.position.set(0, 0.5, -12); rig.scene.add(rig.fill); rig.scene.add(rig.fill.target); // warm fill from the sleigh over Santa's shoulder so the team reads
     if (window.SantaSleigh) { sleigh = SantaSleigh.create({ lite }); rig.scene.add(sleigh.group); }
     const snowG = new THREE.BufferGeometry(); const n = lite ? 500 : 1500; const spos = new Float32Array(n * 3); const sr = mulberry32(0x5A0);
     for (let i = 0; i < n; i++) { spos[i * 3] = (sr() - .5) * 120; spos[i * 3 + 1] = sr() * 40 - 5; spos[i * 3 + 2] = 20 - sr() * 140; }
     snowG.setAttribute('position', new THREE.BufferAttribute(spos, 3));
     snow = new THREE.Points(snowG, new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, sizeAttenuation: false, transparent: true, opacity: 0.65 })); snow.visible = false; rig.scene.add(snow);
 
-    // look around: drag = yaw/pitch, wheel = zoom (altitude multiplier), double-click = reset
-    let dragging = null;
-    canvas.addEventListener('pointerdown', e => { dragging = { x: e.clientX, y: e.clientY, yaw: look.yaw, pitch: look.pitch }; canvas.setPointerCapture(e.pointerId); });
-    canvas.addEventListener('pointermove', e => { if (!dragging) return; look.yaw = clamp(dragging.yaw - (e.clientX - dragging.x) * 0.25, -120, 120); look.pitch = clamp(dragging.pitch + (e.clientY - dragging.y) * 0.2, -40, 30); if (!running) rerender(); });
-    canvas.addEventListener('pointerup', () => { dragging = null; });
-    canvas.addEventListener('wheel', e => { e.preventDefault(); look.zoom = clamp(look.zoom * (e.deltaY > 0 ? 1.12 : 0.89), 0.4, 4); if (!running) rerender(); }, { passive: false });
-    canvas.addEventListener('dblclick', () => { look.yaw = 0; look.pitch = 0; look.zoom = 1; if (!running) rerender(); });
+    // the camera is Santa's eyes in the seat: no user controls (look stays at zero, zoom at 1)
     try { api.dbgFlags = new Set((new URLSearchParams(location.search).get('dbg') || '').split(',').filter(Boolean)); } catch { api.dbgFlags = new Set(); }
     resize();
     if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas.parentElement);
@@ -154,9 +164,11 @@ window.SantaGL = (() => {
 
   function resize() {
     if (!renderer) return;
-    const w = canvas.parentElement.clientWidth || 1000, h = Math.round(w / 2);
+    const box = canvas.parentElement; const w = box.clientWidth || 1000, h = box.clientHeight || Math.round(w / 2);
     renderer.setSize(w, h, false);
-    for (const c of [far.camera, near.camera, rig.camera]) { c.aspect = 2; c.updateProjectionMatrix(); }
+    const aspect = w / h, fov = aspect < 1.2 ? 72 : 60; // narrow frames see a little more of the team and the sky
+    for (const c of [far.camera, near.camera, rig.camera]) { c.aspect = aspect; c.fov = fov; c.updateProjectionMatrix(); }
+    if (sleigh && sleigh.setPixelScale) sleigh.setPixelScale(h * renderer.getPixelRatio());
     if (!running) rerender();
   }
   const rerender = () => { if (!last) return; const out = draw(last.s, last.t, 0); if (api.labelSink) api.labelSink(last.s, out && out.label); };
@@ -212,7 +224,8 @@ window.SantaGL = (() => {
   }
 
   // ---------- dioramas ----------
-  const LANDMARK_TOY = (h, id) => (id === 'workshop' ? 1 : h < 0.12 ? 2.6 : h < 0.3 ? 1.5 : 1.05); // the Workshop is seen from the ground, real scale // small landmarks get a little help at sleigh height
+  const TOY_BY_ID = { workshop: 1, stbasil: 2.1, giza: 1.15, goldengate: 1, capitol: 1.2, parthenon: 1.2, opera: 1.6, tiantan: 1.8, brandenburg: 2.2, nativity: 2.2 }; // sprawling builders get less help
+  const LANDMARK_TOY = (h, id) => (id in TOY_BY_ID ? TOY_BY_ID[id] : h < 0.12 ? 2.4 : h < 0.3 ? 1.5 : 1.05); // small landmarks get a little help at sleigh height
   function ensureDiorama(stop) {
     if (!stop) return null;
     if (dioramas.has(stop.name)) { const e = dioramas.get(stop.name); e.at = performance.now(); return e; }
@@ -220,7 +233,7 @@ window.SantaGL = (() => {
     const spec = sceneSpec(stop, route ? route.year : new Date().getUTCFullYear());
     let inner;
     try { inner = SantaScenery.build(spec, { lite, year: route && route.year }); } catch (e) { console.warn('diorama build failed', stop.name, e); return null; }
-    if (spec.landmark) { let lm = null; inner.traverse(o => { if (!lm && o.name && o.name.startsWith('landmark')) lm = o; }); if (lm) lm.scale.setScalar(LANDMARK_TOY(spec.landmark.heightKm, spec.landmark.id)); }
+    if (spec.landmark) { let lm = null; inner.traverse(o => { if (!lm && o.name && o.name.startsWith('landmark')) lm = o; }); if (lm) { lm.scale.setScalar(LANDMARK_TOY(spec.landmark.heightKm, spec.landmark.id)); lm.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(lm); if (!bb.isEmpty()) lmRadius.set(stop.name, Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x), Math.abs(bb.min.z), Math.abs(bb.max.z))); } }
     // additive materials must not be fogged (fog colour would be ADDED and glow at the horizon); fade them with the haze instead
     inner.traverse(o => { if (o.material && o.material.blending === THREE.AdditiveBlending) { o.material.fog = false; o.material.needsUpdate = true; } });
     // the builder's dish winds with its normals pointing down (probe: groundNormalY0 = -1): render both sides so it is not culled from above
@@ -263,13 +276,16 @@ window.SantaGL = (() => {
     dir.sub(c.clone().multiplyScalar(dir.dot(c))); if (dir.lengthSq() < 1e-12) dir = new THREE.Vector3(0, 1, 0).cross(c); dir.normalize(); // tangent, back toward where we came from
     const lm = typeof landmarkFor === 'function' ? landmarkFor(city) : null;
     const toyH = lm ? lm.heightKm * LANDMARK_TOY(lm.heightKm, lm.id) : 0;
-    const standoff = Math.max(0.3, toyH * 1.7, lm ? lm.footprintKm * 0.7 : 0), alt = 0.095 + Math.max(0, toyH * 0.3 - 0.03); // back off from tall or wide landmarks, climb a little for tall ones
+    const sprawl = lmRadius.get(city.name) || 0;
+    const standoff = Math.max(0.32, toyH * 2.2, lm ? lm.footprintKm * 0.9 : 0, sprawl * 1.15 + 0.12), alt = 0.095 + Math.max(0, toyH * 0.3 - 0.03) + Math.max(0, sprawl - 0.6) * 0.06; // back off from tall or wide landmarks, climb a little for tall ones
     if (parked) { // on the ground at the loading bay, nose toward the hall
       const g = c.clone().add(dir.clone().multiplyScalar(0.095 * KM)).normalize();
       return { ground: g, fwd: dir.clone().negate(), alt: 0.0014 * KM, pitch: 3 };
     }
     const ground = c.clone().add(dir.clone().multiplyScalar(standoff * KM)).normalize();
-    return { ground, fwd: dir.clone().negate(), alt: alt * KM, pitch: -6 };
+    // nose 20 deg left of the landmark so it stands beside the team instead of behind the lead pair
+    const fwd0 = dir.clone().negate(); const fwd = fwd0.clone().applyAxisAngle(ground, 20 * RAD).normalize();
+    return { ground, fwd, alt: alt * KM, pitch: -6 };
   }
   function cruisePose(s) {
     const here = s.lat > 89.99 ? { lat: 89.99, lon: s.next ? s.next.lon : 0 } : s;
@@ -346,22 +362,28 @@ window.SantaGL = (() => {
     const snowy = !!(climate && climate.snow);
     const fogColor = new THREE.Color(snowy ? '#1a2440' : '#0e1626').lerp(new THREE.Color('#5a4a4e'), tw);
     const haze = climate ? climate.haze : 0.5;
-    const visKm = 3.6 - 2.2 * haze;
+    const visKm = 3.2 - 2.0 * haze; // 1.2-2.5 km: a town at night, not a model on a table
     const fogDensity = (1.73 / visKm) / KM * blend * blend; // per Earth unit
     near.scene.fog.color.copy(fogColor); near.scene.fog.density = fogDensity;
     rig.scene.fog.color.copy(fogColor); rig.scene.fog.density = (1.73 / visKm) / 1000 * blend * blend; // per metre
     skyDome.material.uniforms.horizon.value.copy(fogColor);
     skyDome.material.uniforms.zenith.value.copy(new THREE.Color('#03050f').lerp(new THREE.Color('#2a4a8a'), smooth(-6, 8, sunEl)));
     skyDome.material.uniforms.up.value.copy(up); skyDome.material.uniforms.blend.value = blend;
+    { const u = skyDome.material.uniforms; u.north.value.copy(fr.north); u.east.value.copy(fr.east); u.time.value += dt;
+      const nightness = 1 - smooth(-12, 0, sunEl); u.aurora.value = smooth(55, 68, Math.abs(s.lat)) * nightness * (1 - 0.5 * blend);
+      u.glow.value = blend * (0.35 + 0.65 * haze) * nightness; }
+    near.lantern.position.copy(camPos).add(fwd.clone().multiplyScalar(-2 * MT)); near.lantern.intensity = 1.6 * blend;
+    near.nose.position.copy(camPos).add(fwd.clone().multiplyScalar(20 * MT)).add(up.clone().multiplyScalar(-0.6 * MT)); near.nose.intensity = (0.9 + 0.5 * Math.sin(cam.bob * 5.2)) * blend;
+    stars.material.opacity = 0.85 * (1 - 0.55 * blend * haze);
 
     // moon: opposite the sun, lifted above the local horizon so there is always a key light at night
     const moonDir = sunDir.clone().negate().multiplyScalar(0.8).add(up.clone().multiplyScalar(0.6)).normalize();
     const focus = city ? xyz(city.lat, city.lon) : up;
     moon.position.copy(focus).add(moonDir.clone().multiplyScalar(0.006)); moon.target.position.copy(focus); moon.target.updateMatrixWorld();
-    moon.intensity = 0.18 + 0.22 * (1 - tw) + 0.5 * tw; hemi.intensity = 0.18 + 0.25 * tw;
+    moon.intensity = 0.1 + 0.12 * (1 - tw) + 0.5 * tw; hemi.intensity = 0.14 + 0.25 * tw;
     const qInv = qBase.clone().invert();
     rig.moon.position.copy(moonDir.clone().applyQuaternion(qInv).multiplyScalar(120)); rig.moon.target.position.set(0, 0, -8); rig.moon.target.updateMatrixWorld();
-    rig.moon.intensity = moon.intensity; rig.hemi.intensity = hemi.intensity;
+    rig.moon.intensity = moon.intensity * 1.8 + 0.15; rig.hemi.intensity = hemi.intensity * 1.6 + 0.12; // the team is close and lit by the sleigh's own lanterns; keep it readable
     rig.hemi.position.copy(up.clone().applyQuaternion(qInv));
 
     // far-pass bookkeeping
@@ -371,8 +393,9 @@ window.SantaGL = (() => {
     nextLight.visible = false; routeLine.visible = false; tailLine.visible = false;
 
     // the team and the weather
-    if (sleigh) sleigh.update(dt, flying);
-    snow.visible = snowy && blend > 0.15;
+    if (sleigh) sleigh.update(dt, flying, s.speedKmh);
+    for (const d of dioramas.values()) { const inner = d.group.children[0]; const tk = inner && inner.userData && inner.userData.tick; if (typeof tk === 'function' && dt > 0) tk(dt); }
+    snow.visible = snowy && blend > 0.05;
     if (snow.visible && dt > 0) { const p = snow.geometry.attributes.position; for (let i = 0; i < p.count; i++) { let y = p.getY(i) - dt * 1.7; if (y < -5) y = 35; p.setY(i, y); } p.needsUpdate = true; }
     snow.material.opacity = 0.65 * Math.min(1, blend * 1.5);
 
@@ -399,7 +422,7 @@ window.SantaGL = (() => {
     const camFwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
     const matInfo = m => m ? { type: m.type, fog: m.fog, color: m.color && '#' + m.color.getHexString(), emissive: m.emissive && '#' + m.emissive.getHexString(), emissiveIntensity: m.emissiveIntensity, map: !!m.map, opacity: m.opacity, transparent: m.transparent, blending: m.blending } : null;
     const gn = groundMesh && groundMesh.geometry.attributes.normal; const gw = groundMesh ? new THREE.Vector3(0, 1, 0).applyQuaternion(groundMesh.getWorldQuaternion(new THREE.Quaternion())) : null;
-    dbg = { sunEl: +sunEl.toFixed(1), sunDot: +up.dot(sunDir).toFixed(3), atmoVisible: atmo.visible, earthVisible: earth.visible, groundNormalY0: gn ? +gn.getY(0).toFixed(3) : null, groundUpDotWorldUp: gw ? +gw.dot(up).toFixed(3) : null, groundSide: groundMat ? groundMat.side : null, groundVerts: groundMesh ? groundMesh.geometry.attributes.position.count : null, groundMat: matInfo(groundMat), streetsMat: matInfo(streetsMat), hemi: +hemi.intensity.toFixed(3), moonI: +moon.intensity.toFixed(3), legacyLights: renderer.useLegacyLights, camDown: +camFwd.dot(up).toFixed(3), camToCity: city ? +(camPos.distanceTo(xyz(city.lat, city.lon)) / KM).toFixed(3) : null, nearChildren: near.scene.children.length, blend: +blend.toFixed(3), city: city ? city.name : null, landmark: spec && spec.landmark ? spec.landmark.id : null, dioramas: [...dioramas.keys()], fogDensity: +fogDensity.toFixed(1), fogColor: '#' + fogColor.getHexString(), camAltKm: +(cam.alt / KM).toFixed(3), near: near.camera.near, reindeer: sleigh ? sleigh.deer.length : 0, teamReady: !!(sleigh && sleigh.state.ready), mixersRunning: !!(sleigh && sleigh.mixers.length), shadowMap: renderer.shadowMap.enabled, earthTextures: [!!earth.material.uniforms.dayMap.value, !!earth.material.uniforms.lightsMap.value], passes: 3, drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, snow: snow.visible };
+    dbg = { lmRadiusKm: city && lmRadius.has(city.name) ? +lmRadius.get(city.name).toFixed(3) : null, lmNames: (() => { const out = []; for (const d of dioramas.values()) d.group.traverse(o => { if (o.name && o.name.startsWith('landmark')) out.push(o.name + ':' + o.children.length); }); return out; })(), sunEl: +sunEl.toFixed(1), sunDot: +up.dot(sunDir).toFixed(3), atmoVisible: atmo.visible, earthVisible: earth.visible, groundNormalY0: gn ? +gn.getY(0).toFixed(3) : null, groundUpDotWorldUp: gw ? +gw.dot(up).toFixed(3) : null, groundSide: groundMat ? groundMat.side : null, groundVerts: groundMesh ? groundMesh.geometry.attributes.position.count : null, groundMat: matInfo(groundMat), streetsMat: matInfo(streetsMat), hemi: +hemi.intensity.toFixed(3), moonI: +moon.intensity.toFixed(3), legacyLights: renderer.useLegacyLights, camDown: +camFwd.dot(up).toFixed(3), camToCity: city ? +(camPos.distanceTo(xyz(city.lat, city.lon)) / KM).toFixed(3) : null, nearChildren: near.scene.children.length, blend: +blend.toFixed(3), city: city ? city.name : null, landmark: spec && spec.landmark ? spec.landmark.id : null, dioramas: [...dioramas.keys()], fogDensity: +fogDensity.toFixed(1), fogColor: '#' + fogColor.getHexString(), camAltKm: +(cam.alt / KM).toFixed(3), near: near.camera.near, reindeer: sleigh ? sleigh.deer.length : 0, teamReady: !!(sleigh && sleigh.state.ready), mixersRunning: !!(sleigh && sleigh.mixers.length), shadowMap: renderer.shadowMap.enabled, earthTextures: [!!earth.material.uniforms.dayMap.value, !!earth.material.uniforms.lightsMap.value], passes: 3, drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, snow: snow.visible };
 
     return { label: null }; // nothing is overlaid outside the sleigh
     // (unreachable, kept for reference) HUD label for the next stop

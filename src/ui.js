@@ -284,6 +284,7 @@
   function render(t) {
     const s = stateAt(route, t);
     const tel = telemetry(s);
+    if (window.SantaAudio) SantaAudio.setState({ flying: s.phase === 'flight', delivering: s.phase === 'flight' && s.status === 'delivering', speedKmh: s.speedKmh || 0, snow: false, stopKey: `${s.phase}:${s.stopsDone}` });
     const past = year < currentYear;
     const is = past ? 'was' : 'is';
     const prefix = year !== currentYear ? `${year} · ` : '';
@@ -490,7 +491,7 @@
     const hdg = s.next ? bearing(s, s.next) : 0;
     const nextName = s.next ? (s.next.pole ? 'the Workshop' : s.next.name) : '';
     let cap;
-    if (s.phase === 'pre') cap = `Parked at the loading bay, nose toward ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)} · drag to look around`;
+    if (s.phase === 'pre') cap = `Parked at the loading bay, nose toward ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)}`;
     else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off, cookies under audit.';
     else if (s.status === 'delivering') { const lm = typeof landmarkFor === 'function' ? landmarkFor(s.at) : null; cap = `Over the rooftops of ${s.at.name}${lm ? ` · ${lm.label} dead ahead` : ''} · ${big(s.at.presents)} presents · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km`; }
     else cap = `Heading ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h · ${nextName} ${fmtInt(haversineKm(s, s.next))} km ahead · ${fmtDuration(s.etaMs)}`;
@@ -538,6 +539,26 @@
   }
 
   // ---------- wiring ----------
+  // fullscreen for the view box (the renderer follows the element's size)
+  (() => {
+    const btn = $('fullscreen'), wrap = $('povwrap'); if (!btn) return;
+    const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const paint = () => { const on = isFs(); btn.textContent = on ? '⛶ Exit full screen' : '⛶ Full screen'; btn.setAttribute('aria-pressed', String(on)); };
+    btn.onclick = () => {
+      if (isFs()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+      if (view !== 'pov') setView('pov');
+      const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen; if (req) req.call(wrap);
+    };
+    document.addEventListener('fullscreenchange', paint); document.addEventListener('webkitfullscreenchange', paint); paint();
+  })();
+  // sleigh bells (procedural, off until tapped; a stored "on" only changes the label until the tap)
+  (() => {
+    const btn = $('bells'); if (!btn || !window.SantaAudio) { if (btn) btn.hidden = true; return; }
+    let stored = null; try { stored = localStorage.getItem('santa_bells'); } catch { /* ignore */ }
+    const paint = () => { const on = SantaAudio.enabled; btn.textContent = on ? '🔔 Bells: on' : (stored === 'on' ? '🔔 Bells (tap to start)' : '🔔 Bells: off'); btn.setAttribute('aria-pressed', String(on)); };
+    btn.onclick = () => { SantaAudio.toggle(); stored = SantaAudio.enabled ? 'on' : 'off'; paint(); };
+    paint();
+  })();
   $('view-map').onclick = () => setView('map');
   $('view-pov').onclick = () => setView('pov');
   $('mode-live').onclick = () => setMode('live');

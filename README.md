@@ -36,23 +36,24 @@ runs. Live at **https://roho.foo/santa/**.
 - **Two views.** *Mission control* is the whole world on an equirectangular
   map: a short fading tail behind the sleigh and every delivered city lit
   green, so the picture fills up as the night goes on. *From the sleigh* is
-  Santa's point of view in real 3D: a WebGL globe (Three.js, vendored into the
-  single file) with a chase camera just behind the sleigh looking along the
-  heading. The night side comes from the real sun direction in the fragment
-  shader with a warm band along the terminator, there is an atmosphere rim,
-  a seeded starfield, the sun where it actually is, cities as lights with
-  clamped point sizes, the dashed route ahead and the gold tail behind, the
-  Workshop at the pole (a candy-striped pole with a lamp, a gingerbread hall,
-  gumdrops and candy canes), toy-scale skylines for every city (a cluster of
-  lit boxes sized by population: gold once delivered, dim before, red for the
-  next stop; the camera swoops down behind the sleigh while Santa is on the
-  rooftops so the skyline fills the view), and the reindeer team in the
-  foreground with Rudolph's nose on. Drag to look around, scroll to climb,
-  double-click to reset. When
-  WebGL is unavailable the same view falls back to an SVG perspective
-  renderer (azimuthal projection around the nadir, Sutherland–Hodgman against
-  the horizon circle, near-plane clip). The choice sticks (`localStorage`) and
-  `?view=pov` deep-links it.
+  Santa's own eyes, fixed to the seat (no camera controls): a WebGL globe
+  (Three.js, vendored into the single file) seen from 95 m up over each city.
+  You see your own mittens on the reins, nine rigged reindeer (Quaternius,
+  CC0) galloping ahead with leather harness, bells and breath, Rudolph's nose
+  lighting the team, a sparkle trail off the runners, and a brass dash console
+  carrying every bit of navigation data (next stop, ETA, heading, speed,
+  altitude, coordinates, the landmark ahead). Nothing is overlaid on the view.
+  The night side comes from the real sun direction in the fragment shader,
+  there is an atmosphere rim, a starfield, the sun where it actually is,
+  falling snow where it snows, fog that thickens over towns, a warm city glow
+  on the horizon, and the aurora over cities north of about 60°. Between
+  cities the sleigh cruises high; approaching a city it flies in at altitude,
+  then dives to rooftop height over that city's own ground, and climbs out
+  again on departure. A full-screen button and optional procedural sleigh
+  bells (wind, jingles in gallop rhythm, a chime at each stop; off by default)
+  live above the view. When WebGL is unavailable the same view falls back to an
+  SVG perspective renderer. The choice sticks (`localStorage`) and `?view=pov`
+  deep-links it.
 - **Efficient routes.** Santa is all about efficiency. Inside each time zone
   the order is a travelling-salesman plan: nearest-neighbour tours from the
   cities closest to where the sleigh is coming from, polished with 2-opt
@@ -151,7 +152,7 @@ test/             node:test suite for the engine
 ```
 
 ```
-npm test              # 26 engine tests
+npm test              # 34 tests (engine + scenery)
 node build.mjs        # writes dist/index.html
 ```
 

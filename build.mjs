@@ -26,6 +26,7 @@ const uiJs = read('src/ui.js');
 const view3dJs = read('src/three-view.js');
 const sceneryJs = has('src/three-scenery.js') ? read('src/three-scenery.js') : '/* three-scenery.js pending */';
 const sleighJs = has('src/three-sleigh.js') ? read('src/three-sleigh.js') : '/* three-sleigh.js pending */';
+const audioJs = has('src/audio.js') ? read('src/audio.js') : '/* audio.js pending */';
 const styleCss = read('src/style.css');
 
 // vendored Three.js (MIT); drop the UMD-deprecation console.warn on its first line
@@ -59,6 +60,7 @@ const tokens = {
   '/*__ASSETS__*/': assetsJs,
   '/*__SCENERY__*/': sceneryJs,
   '/*__SLEIGH__*/': sleighJs,
+  '/*__AUDIO__*/': audioJs,
   '/*__VIEW3D__*/': view3dJs,
   '/*__UI__*/': uiJs,
 };

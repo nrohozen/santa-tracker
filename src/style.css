@@ -135,8 +135,7 @@ h2 { font: 700 1.5rem/1.2 var(--display); margin: 0 0 10px; color: var(--ink); }
 .chip.is-on { background: var(--green); color: #fff; border-color: #1f5a32; }
 .povwrap { position: relative; aspect-ratio: 2 / 1; border-radius: 4px; overflow: hidden; background: #02040a; }
 .gl, #pov, .hud { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.gl { cursor: grab; touch-action: none; }
-.gl:active { cursor: grabbing; }
+.gl { touch-action: pan-y; }
 .hud { pointer-events: none; }
 #pov { background: #02040a; }
 #map[hidden], #povwrap[hidden], #pov[hidden], .gl[hidden] { display: none; }
@@ -343,3 +342,90 @@ header.top, main, footer.foot, .lights { position: relative; z-index: 1; }
 .gl:not([hidden]) ~ .hud .pov-n, .gl:not([hidden]) ~ .hud #fp-next-label { display: none; }
 
 .year-card.is-pending .year-meta { color: var(--muted); font-style: italic; }
+
+/* ---------- page track: fixed-height tickers, phone viewport, fullscreen, aux chips ---------- */
+.status h1#headline { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.2em; max-height: 2.2em; }
+.status .subline { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.5em; min-height: 0; }
+.status .elfline { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 3.2em; min-height: 0; }
+.status .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.6em; min-height: 0; }
+.log { height: 224px; min-height: 0; overflow: hidden; grid-auto-rows: 28px; align-content: start; }
+.log li { height: 28px; overflow: hidden; align-items: center; }
+.log li > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.log li .note { display: inline; }
+.tile .value { height: 1.15em; min-height: 0; }
+.tile .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.3em; min-height: 0; }
+.tile .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.3em; }
+#ws-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.3em; min-height: 0; }
+#year-notes { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 3.2em; min-height: 0; }
+.systems dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#scrub-time, #permalink { display: inline-block; min-width: 22ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.scrub-labels > span:first-child, .scrub-labels > span:last-child { white-space: nowrap; }
+.controls .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.year-meta { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.6em; }
+.year-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.chip-aux { margin-left: auto; }
+.chip-aux + .chip-aux { margin-left: 0; }
+.views { align-items: center; }
+#povwrap:fullscreen { aspect-ratio: auto; width: 100vw; height: 100vh; border-radius: 0; background: #02040a; }
+#povwrap:-webkit-full-screen { aspect-ratio: auto; width: 100vw; height: 100vh; border-radius: 0; background: #02040a; }
+
+@media (pointer: coarse) {
+  .chip, .btn, .mode { min-height: 40px; }
+  .speed select { min-height: 40px; }
+}
+@media (max-width: 760px) {
+  .povwrap { aspect-ratio: 1 / 1; }
+  #scrub { height: 28px; }
+  .status h1#headline { min-height: 2.2em; }
+}
+@media (max-width: 480px) {
+  .povwrap { aspect-ratio: 4 / 5; }
+  .lights { height: 34px; }
+  .card { padding: 14px 12px; }
+  .tiles { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .years { gap: 12px 10px; }
+  .year-card { width: calc(50% - 5px); }
+  .views { gap: 6px; }
+  .chip { padding: 3px 9px; font-size: .95rem; }
+  .chip-aux { margin-left: 0; }
+}
+
+/* the two free-text blocks above the map re-wrapped when the hand font swapped in and moved the map card: pin them */
+.elfbar { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 3.3em; box-sizing: content-box; }
+.legend { flex-wrap: nowrap; overflow: hidden; height: 1.7em; align-items: center; }
+.views { min-height: 46px; }
+@media (max-width: 760px) {
+  .elfbar { -webkit-line-clamp: 4; height: 6.4em; }
+  .legend { flex-wrap: wrap; height: 3.4em; align-content: flex-start; }
+  .views { min-height: 92px; }
+}
+@media (max-width: 480px) {
+  .elfbar { -webkit-line-clamp: 6; height: 9.4em; }
+  .legend { height: 5em; }
+  .views { min-height: 136px; }
+}
+
+/* first paint waits for the bundled fonts (they are inline, so this is a few ms) instead of swapping and re-wrapping */
+html.fonts-loading body > * { visibility: hidden; }
+
+/* no horizontal overflow on phones: the nowrap scrubber labels and the permalink line must shrink, not push */
+.scrub-labels > span { min-width: 0; }
+.scrub-labels > span:first-child, .scrub-labels > span:last-child { flex: 1 1 0; overflow: hidden; text-overflow: ellipsis; }
+#scrub-time { flex: 0 0 auto; }
+.controls .hint { min-width: 0; }
+#permalink { max-width: 100%; }
+@media (max-width: 760px) {
+  #scrub-time, #permalink { min-width: 14ch; }
+  .controls .hint { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; overflow: hidden; height: 3.1em; }
+  .controls .hint a { display: inline; min-width: 0; }
+}
+
+/* grid items default to min-width:auto and let a wide child push the whole column past the viewport */
+main > *, .grid2 > *, .tiles > *, .card { min-width: 0; max-width: 100%; }
+.legend { line-height: 1.6; }
+@media (max-width: 760px) { .legend { height: 3.3em; } }
+@media (max-width: 480px) { .legend { height: 4.9em; } }
+
+/* the legend wraps to two rows on phones; give it room instead of clipping the last item */
+@media (max-width: 760px) { .legend { height: auto; min-height: 3.4em; max-height: none; overflow: visible; } }

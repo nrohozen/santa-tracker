@@ -482,11 +482,10 @@
     let cap;
     if (s.phase === 'pre') cap = `Parked at the loading bay, nose toward ${s.next.name} · launch in ${fmtDuration(s.untilLaunchMs)} · drag to look around`;
     else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off, cookies under audit.';
-    else if (s.status === 'delivering') cap = `Over the rooftops of ${s.at.name} · ${big(s.at.presents)} presents · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km, bearing ${hdg.toFixed(0)}°`;
+    else if (s.status === 'delivering') { const lm = typeof landmarkFor === 'function' ? landmarkFor(s.at) : null; cap = `Over the rooftops of ${s.at.name}${lm ? ` · ${lm.label} dead ahead` : ''} · ${big(s.at.presents)} presents · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km`; }
     else cap = `Heading ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h · ${nextName} ${fmtInt(haversineKm(s, s.next))} km ahead · ${fmtDuration(s.etaMs)}`;
     $('pov-caption').textContent = cap;
     $('pov-coords').textContent = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
-    $('fp-nose').setAttribute('visibility', s.phase === 'flight' ? 'visible' : 'hidden');
   }
 
   function setView(v) {
@@ -495,6 +494,7 @@
     $('view-map').classList.toggle('is-on', v === 'map'); $('view-map').setAttribute('aria-pressed', String(v === 'map'));
     $('view-pov').classList.toggle('is-on', v === 'pov'); $('view-pov').setAttribute('aria-pressed', String(v === 'pov'));
     try { localStorage.setItem('santa_view', v); } catch { /* private window etc. */ }
+    if (GL) { if (v === 'pov') GL.start(); else GL.stop(); }
     if (lastT != null) render(lastT);
   }
 
@@ -568,5 +568,6 @@
   if (!Number.isNaN(tParam)) { applyYear(new Date(tParam).getUTCFullYear()); setMode('preview', tParam); }
   else if (!Number.isNaN(yParam) && yParam !== currentYear) { setYear(yParam); }
   else { applyYear(currentYear); setMode(params.get('mode') === 'preview' ? 'preview' : 'live'); }
+  if (GL && view === 'pov') GL.start();
   requestAnimationFrame(frame);
 })();

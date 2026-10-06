@@ -136,11 +136,13 @@ src/stops.mjs     252 cities (197 countries): lat, lon, UTC offset on Dec 24, me
 src/engine.mjs    pure engine: route per year (seeded order + TZ history), position at time t, sun/terminator, telemetry, log, TopoJSON decoder
 src/ui.js         DOM + SVG rendering, modes, year select + archive grid, scrubber, keyboard, ?t= / ?y= / ?view= deep links
 src/three-view.js the 3D sleigh view (Three.js): globe shader, lights, route, chase camera, drag/zoom
-vendor/           three.min.js r152 (MIT) + license, inlined by the build
+vendor/           three.min.js r152 + three-gltfloader.js (MIT), textures/ (NASA Earth day, night lights, specular),
+                  models/reindeer.glb (Quaternius, CC0, clips reduced), fonts/ (Mountains of Christmas, Patrick Hand), LICENSES.md
+tools/prepare-assets.mjs  dev-only: downloads and prepares everything in vendor/ (`npm run assets`); not shipped
 src/style.css     dark "ops dashboard" theme, phone-friendly
 src/template.html page skeleton with /*__TOKENS__*/
 data/land-110m.json  Natural Earth land, 110 m, from world-atlas@2 (public domain)
-build.mjs         inlines everything into dist/index.html (~110 KB)
+build.mjs         inlines everything (code, map data, fonts, textures, the reindeer) into one dist/index.html (~3 MB)
 test/             node:test suite for the engine
 ```
 
@@ -166,6 +168,17 @@ Not affiliated with NORAD, Google, or the North Pole.
 
 ## License
 
-MIT. Map data: Natural Earth (public domain) via
-[world-atlas](https://github.com/topojson/world-atlas). 3D rendering:
-[Three.js](https://threejs.org) r152 (MIT), vendored in `vendor/`.
+MIT for the code. Bundled third-party assets (full table in `vendor/LICENSES.md`):
+
+- [Three.js](https://threejs.org) r152 and its GLTFLoader, MIT.
+- Earth textures from the three.js examples; imagery by NASA Visible Earth
+  (Blue Marble, Black Marble), public domain.
+- Reindeer model "Reindeer" by [Quaternius](https://poly.pizza/m/tQdzbZ1Cmw), CC0 1.0
+  (animations reduced to Gallop, Idle, Idle_Headlow).
+- Fonts: Mountains of Christmas by Tart Workshop (Apache License 2.0) and
+  Patrick Hand by Patrick Wagesreiter (SIL OFL 1.1), Latin subsets inlined.
+- Map data: Natural Earth (public domain) via
+  [world-atlas](https://github.com/topojson/world-atlas).
+
+The sleigh, the landmarks, the buildings and the trees are procedural, built
+from Three.js primitives in the page's own code.

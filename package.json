@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "test": "node --test \"test/**/*.test.mjs\"",
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "assets": "node tools/prepare-assets.mjs"
   },
   "license": "MIT"
 }

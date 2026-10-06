@@ -6716,7 +6716,7 @@ window.SantaGL = (() => {
       fragmentShader: `uniform sampler2D dayMap, lightsMap, specMap; uniform float hasSpec; uniform vec3 sunDir, camPos; varying vec2 vUv; varying vec3 vN; varying vec3 vW;
         void main(){ vec3 n = normalize(vN); vec3 day = texture2D(dayMap, vUv).rgb; vec3 city = texture2D(lightsMap, vUv).rgb; float d = dot(n, sunDir);
           float dayF = smoothstep(-0.06, 0.1, d);
-          vec3 night = day * 0.085 + vec3(0.01, 0.015, 0.035) + city * vec3(1.35, 1.15, 0.8);
+          vec3 night = day * 0.085 + vec3(0.01, 0.015, 0.035) + city * city * vec3(0.55, 0.40, 0.22); // the lights map saturates over cities: square it and keep it warm
           vec3 lit = day * (0.25 + 0.95 * max(d, 0.0));
           if (hasSpec > 0.5) { float s = texture2D(specMap, vUv).r; vec3 v = normalize(camPos - vW); vec3 h = normalize(v + sunDir); lit += s * pow(max(dot(n, h), 0.0), 40.0) * 0.6 * dayF; }
           vec3 col = mix(night, lit, dayF);
@@ -6848,7 +6848,7 @@ window.SantaGL = (() => {
   }
 
   // ---------- dioramas ----------
-  const LANDMARK_TOY = h => (h < 0.12 ? 2.3 : h < 0.3 ? 1.5 : 1.1); // small landmarks get a little help at sleigh height
+  const LANDMARK_TOY = h => (h < 0.12 ? 2.6 : h < 0.3 ? 1.5 : 1.05); // small landmarks get a little help at sleigh height
   function ensureDiorama(stop) {
     if (!stop) return null;
     if (dioramas.has(stop.name)) { const e = dioramas.get(stop.name); e.at = performance.now(); return e; }
@@ -6890,7 +6890,8 @@ window.SantaGL = (() => {
     let dir = inboundFrom ? xyz(inboundFrom.lat, inboundFrom.lon).sub(c) : new THREE.Vector3(0, 1, 0).cross(c);
     dir.sub(c.clone().multiplyScalar(dir.dot(c))); if (dir.lengthSq() < 1e-12) dir = new THREE.Vector3(0, 1, 0).cross(c); dir.normalize(); // tangent, back toward where we came from
     const lm = typeof landmarkFor === 'function' ? landmarkFor(city) : null;
-    const standoff = Math.max(0.38, lm ? lm.footprintKm * 0.8 : 0), alt = 0.095 + (lm ? Math.max(0, lm.heightKm * 0.25 - 0.02) : 0); // back off from big footprints, climb a little for tall ones
+    const toyH = lm ? lm.heightKm * LANDMARK_TOY(lm.heightKm) : 0;
+    const standoff = Math.max(0.3, toyH * 1.7, lm ? lm.footprintKm * 0.7 : 0), alt = 0.095 + Math.max(0, toyH * 0.3 - 0.03); // back off from tall or wide landmarks, climb a little for tall ones
     const ground = c.clone().add(dir.clone().multiplyScalar(standoff * KM)).normalize();
     return { ground, fwd: dir.clone().negate(), alt: alt * KM, pitch: -6 };
   }
@@ -6958,7 +6959,9 @@ window.SantaGL = (() => {
     sunSprite.position.copy(camPos).add(sunDir.clone().multiplyScalar(50));
     stars.position.copy(camPos); skyDome.position.copy(camPos);
     atmo.visible = cam.alt > 0.03;
-    earth.visible = blend < 0.6; // at the rooftops the dish covers the view; the globe shader still reads too bright at night here (open item)
+    earth.visible = blend < 0.6; // at the rooftops the dish covers the view out to the fog
+    const surfaceVisible = earth.visible; // the surface overlays must go with it or they peek through from below the horizon
+    lights.visible = surfaceVisible; if (cities) cities.visible = surfaceVisible;
     const sunEl = Math.asin(clamp(up.dot(sunDir), -1, 1)) / RAD;
     const tw = smooth(-16, 2, sunEl);
     const snowy = !!(climate && climate.snow);
@@ -6986,9 +6989,9 @@ window.SantaGL = (() => {
     const stops = lights.userData.stops, col = lights.geometry.getAttribute('color');
     stops.forEach((w, i) => { const c = (w.depart <= t || s.phase === 'done') ? DONE_CITY : TODO_CITY; col.setXYZ(i, c.r, c.g, c.b); }); col.needsUpdate = true;
     if (cities) { const key = `${s.stopsDone}:${s.phase}:${s.next && s.next.i}:${s.at && s.at.i}`; if (cities.userData.key !== key) { cities.userData.key = key; cityIndex.forEach((si, i) => { const w = stops[si]; cities.setColorAt(i, (w.depart <= t || s.phase === 'done' || s.at === w) ? DONE_CITY : (s.phase === 'flight' && s.next === w) ? NEXT_CITY : TODO_CITY); }); cities.instanceColor.needsUpdate = true; } }
-    if (s.phase === 'flight' && s.next && !s.next.pole) { nextLight.geometry.setFromPoints([xyz(s.next.lat, s.next.lon, 1.003)]); nextLight.visible = true; } else nextLight.visible = false;
-    routeLine.visible = s.phase !== 'done';
-    if (s.phase === 'flight') { tailLine.geometry.setFromPoints(track(route, t - 150 * 60000, t).map(q2 => xyz(q2.lat, q2.lon, 1.0022))); tailLine.visible = true; } else tailLine.visible = false;
+    if (s.phase === 'flight' && s.next && !s.next.pole) { nextLight.geometry.setFromPoints([xyz(s.next.lat, s.next.lon, 1.003)]); nextLight.visible = surfaceVisible; } else nextLight.visible = false;
+    routeLine.visible = s.phase !== 'done' && surfaceVisible;
+    if (s.phase === 'flight') { tailLine.geometry.setFromPoints(track(route, t - 150 * 60000, t).map(q2 => xyz(q2.lat, q2.lon, 1.0022))); tailLine.visible = surfaceVisible; } else tailLine.visible = false;
 
     // the team and the weather
     if (sleigh) sleigh.update(dt, flying);
@@ -7025,7 +7028,7 @@ window.SantaGL = (() => {
     if (!s.next || s.next.pole) return { label: null };
     const v = xyz(s.next.lat, s.next.lon, 1.003);
     if (v.dot(up) < 1 / (1 + cam.alt)) return { label: null };
-    if (blend > 0.5 && city === s.next) return { label: null };
+    if (blend > 0.5) return { label: null }; // over a city the caption names the landmark; no floating label on top of it
     const ndc = v.clone().project(far.camera);
     if (ndc.z > 1 || Math.abs(ndc.x) > 1.05 || Math.abs(ndc.y) > 1.05) return { label: null };
     return { label: { x: (ndc.x + 1) / 2 * W, y: (1 - ndc.y) / 2 * H } };

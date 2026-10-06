@@ -71,8 +71,11 @@ runs. Live at **https://roho.foo/santa/**.
   (computed from your browser's clock, using the December offset rather than
   today's), plus altitude, lead reindeer, cookie and milk intake, sack level,
   and a mission log with one deadpan note per city.
-- **Every country.** 252 stops in 197 countries and territories: every country
-  where someone is waiting up, one city each where only a capital was missing
+- **Every country, and then some.** 1,452 stops in 197 countries and territories:
+  252 curated cities (every country where someone is waiting up, one city each
+  where only a capital was missing) plus every Natural Earth populated place of
+  300,000 people or more (`tools/prepare-stops.mjs`, public domain data; UTC
+  offsets derived from each place's IANA zone with a longitude sanity check)
   (Bethlehem stands in for Palestine, and yes, Vatican City gets a stop). Ten
   countries are left to sleep because public Christmas celebration there is
   banned or essentially absent; the list and the reason for each line are in
@@ -132,7 +135,8 @@ clock. The year rolls over to the next Christmas once the sleigh is home.
 ## Layout
 
 ```
-src/stops.mjs     252 cities (197 countries): lat, lon, UTC offset on Dec 24, metro population; SKIPPED list
+src/stops.mjs     1,452 cities (197 countries): 252 curated + a generated block from Natural Earth; SKIPPED list
+tools/prepare-stops.mjs  regenerates that block (node tools/prepare-stops.mjs --min-pop=300000)
 src/engine.mjs    pure engine: route per year (seeded order + TZ history), position at time t, sun/terminator, telemetry, log, TopoJSON decoder
 src/ui.js         DOM + SVG rendering, modes, year select + archive grid, scrubber, keyboard, ?t= / ?y= / ?view= deep links
 src/three-view.js the 3D sleigh view (Three.js): globe shader, lights, route, chase camera, drag/zoom

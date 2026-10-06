@@ -200,22 +200,31 @@
 
   // ---------- archive grid + year select ----------
   const yearsEl = $('years'), sel = $('year');
-  for (const y of years) {
+  const fillCard = (y, b, svg, meta) => {
     const r = routeFor(y);
-    const b = document.createElement('button'); b.className = 'year-card'; b.type = 'button'; b.dataset.year = y;
+    svg.appendChild(el('path', { class: 'mini-route', d: polyline(track(r, r.launch, r.home, 3 * MIN)) }));
+    meta.textContent = `${r.stopCount} stops · ${fmtInt(r.totalKm)} km · ${(r.efficiency * 100).toFixed(1)}% of best plan${r.changes.length ? ` · ${r.changes.length} clock change${r.changes.length > 1 ? 's' : ''}` : ''}`;
+    b.classList.remove('is-pending');
+  };
+  const pending = [];
+  for (const y of years) {
+    const b = document.createElement('button'); b.className = 'year-card is-pending'; b.type = 'button'; b.dataset.year = y;
     b.setAttribute('aria-label', `Replay the ${y} flight`);
     const svg = el('svg', { viewBox: '0 0 1000 500', 'aria-hidden': 'true' });
     svg.appendChild(el('rect', { class: 'ocean', width: W, height: H }));
     svg.appendChild(el('use', { href: '#land-path' }));
-    svg.appendChild(el('path', { class: 'mini-route', d: polyline(track(r, r.launch, r.home, 3 * MIN)) }));
     const label = document.createElement('span'); label.className = 'year-label'; label.textContent = y === currentYear ? `${y} · this year` : String(y);
-    const meta = document.createElement('span'); meta.className = 'year-meta';
-    meta.textContent = `${r.stopCount} stops · ${fmtInt(r.totalKm)} km · ${(r.efficiency * 100).toFixed(1)}% of best plan${r.changes.length ? ` · ${r.changes.length} clock change${r.changes.length > 1 ? 's' : ''}` : ''}`;
+    const meta = document.createElement('span'); meta.className = 'year-meta'; meta.textContent = 'route planning is drawing this one…';
     b.append(svg, label, meta);
     b.onclick = () => { setYear(y); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     yearsEl.appendChild(b);
     const o = document.createElement('option'); o.value = y; o.textContent = y === currentYear ? `${y} (this year)` : String(y); sel.appendChild(o);
+    if (y === currentYear) fillCard(y, b, svg, meta); else pending.push(() => fillCard(y, b, svg, meta));
   }
+  // past years are planned one at a time in idle moments (each route takes a few hundred ms with ~1,450 stops)
+  const idle = window.requestIdleCallback || (fn => setTimeout(fn, 60));
+  const drain = () => { const next = pending.shift(); if (!next) return; next(); idle(drain); };
+  idle(drain);
   sel.onchange = e => setYear(+e.target.value);
 
   // Viewer's offset on that year's Christmas Eve (not today's: DST may differ).

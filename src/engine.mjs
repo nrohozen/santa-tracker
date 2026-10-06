@@ -171,7 +171,8 @@ export function twoOpt(order, from) {
   const o = order.slice();
   const d = (a, b) => haversineKm(a, b);
   let improved = true, guard = 0;
-  while (improved && guard++ < 200) {
+  const limit = n > 150 ? 12 : 200; // big bands: a few passes catch the crossings that matter
+  while (improved && guard++ < limit) {
     improved = false;
     for (let i = 1; i < n - 1; i++) {
       for (let k = i + 1; k < n; k++) {
@@ -204,8 +205,9 @@ export function orderBand(group, year, bandIndex, prevEnd) {
   if (group.length === 1) return { order: group.slice(), km: haversineKm(from, group[0]), bestKm: haversineKm(from, group[0]) };
   const rnd = mulberry32(hash32(year, bandIndex));
   const byDist = group.slice().sort((a, b) => haversineKm(from, a) - haversineKm(from, b));
-  const starts = new Set(byDist.slice(0, Math.min(4, group.length)));
-  for (let i = 0; i < 3 && starts.size < group.length; i++) starts.add(group[Math.floor(rnd() * group.length)]);
+  const big = group.length > 150;
+  const starts = new Set(byDist.slice(0, Math.min(big ? 2 : 4, group.length)));
+  for (let i = 0; i < (big ? 1 : 3) && starts.size < group.length; i++) starts.add(group[Math.floor(rnd() * group.length)]);
   const seen = new Set(), cands = [];
   for (const s of starts) {
     const order = twoOpt(nearestTour(s, group), from);
@@ -244,6 +246,7 @@ export function buildRoute(year, stops = stopsForYear(year)) {
     prevEnd = order[n - 1];
   });
   timed.sort((a, b) => a.t - b.t);
+  for (let i = 1; i < timed.length; i++) if (timed[i].t <= timed[i - 1].t) timed[i].t = timed[i - 1].t + 1000; // fractional-hour bands overlap; never two arrivals at once
 
   const launch = timed[0].t - 60 * MIN;
   const home = timed[timed.length - 1].t + 60 * MIN;

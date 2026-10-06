@@ -341,3 +341,5 @@ header.top, main, footer.foot, .lights { position: relative; z-index: 1; }
 
 /* with WebGL the view carries no overlays; the SVG fallback keeps its captions */
 .gl:not([hidden]) ~ .hud .pov-n, .gl:not([hidden]) ~ .hud #fp-next-label { display: none; }
+
+.year-card.is-pending .year-meta { color: var(--muted); font-style: italic; }

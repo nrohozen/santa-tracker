@@ -229,6 +229,14 @@ window.SantaGL = (() => {
     const g = new THREE.Group(); g.name = `diorama:${stop.name}`;
     g.position.copy(up); g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(east, up, north.clone().negate())); // +X east, +Y up, +Z south
     g.scale.setScalar(KM); g.add(inner);
+    // clear a landing zone around the sleigh's stand-off point (local km: +X east, +Z south)
+    try {
+      const prev = stop.i > 0 && route && route.waypoints[stop.i - 1] ? route.waypoints[stop.i - 1] : null;
+      const cp = cityPose(stop, prev, false); const c = xyz(stop.lat, stop.lon);
+      const off = cp.ground.clone().sub(c); const px = off.dot(east) / KM, pz = -off.dot(north) / KM;
+      const m = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0), pos = new THREE.Vector3();
+      inner.traverse(o => { if (!o.isInstancedMesh || !(o.name || '').startsWith('props')) return; let changed = false; for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m); pos.setFromMatrixPosition(m); if (Math.hypot(pos.x - px, pos.z - pz) < 0.16 || Math.hypot(pos.x, pos.z) < 0.08) { o.setMatrixAt(i, zero); changed = true; } } if (changed) o.instanceMatrix.needsUpdate = true; });
+    } catch (e) { console.warn('landing zone', e); }
     const spots = (inner.userData && inner.userData.lights) || [];
     const pls = spots.slice(0, lite ? 2 : 6).map(p => { const l = new THREE.PointLight(0xffc27a, 60 * MT * MT, 320 * MT, 2); l.position.set(p.x * KM, (p.y || 0.006) * KM, p.z * KM); return l; });
     pls.forEach(l => g.add(l));
@@ -292,7 +300,8 @@ window.SantaGL = (() => {
       entry = ensureDiorama(city);
       const prev = city.i > 0 && route.waypoints[city.i - 1] ? route.waypoints[city.i - 1] : null;
       const cp = cityPose(city, prev, parked);
-      want = { ground: slerpV(cruise.ground, cp.ground, blend), fwd: slerpV(cruise.fwd, cp.fwd, blend), alt: Math.exp(lerp(Math.log(cruise.alt * look.zoom), Math.log(cp.alt * look.zoom), blend)), pitch: lerp(cruise.pitch, cp.pitch, blend) };
+      const bPos = smooth(0, 0.7, blend), bAlt = smooth(0.55, 1, blend); // fly to the city at altitude, then dive onto the rooftops
+      want = { ground: slerpV(cruise.ground, cp.ground, bPos), fwd: slerpV(cruise.fwd, cp.fwd, bPos), alt: Math.exp(lerp(Math.log(cruise.alt * look.zoom), Math.log(cp.alt * look.zoom), bAlt)), pitch: lerp(cruise.pitch, cp.pitch, bAlt) };
       if (entry) { climate = entry.spec.climate; spec = entry.spec; }
     } else want = { ground: cruise.ground, fwd: cruise.fwd, alt: cruise.alt * look.zoom, pitch: cruise.pitch };
     const keep = new Set(); if (city) keep.add(city.name); if (s.next && !s.next.pole && blend > 0) keep.add(s.next.name);
@@ -319,6 +328,7 @@ window.SantaGL = (() => {
     const camPos = up.clone().multiplyScalar(1 + cam.alt).add(right.clone().multiplyScalar(seat.x * MT)).add(up.clone().multiplyScalar(seat.y * MT)).add(fwd.clone().multiplyScalar(-seat.z * MT));
     for (const c of [far.camera, near.camera]) { c.position.copy(camPos); c.quaternion.copy(q); c.updateMatrixWorld(); }
     near.camera.near = Math.max(0.3 * MT, cam.alt * 0.05); near.camera.far = 0.03; near.camera.updateProjectionMatrix();
+    far.camera.near = clamp(cam.alt * 0.08, 2e-6, 0.0004); far.camera.updateProjectionMatrix();
     rig.camera.position.copy(seat); rig.camera.quaternion.copy(qHead); rig.camera.updateMatrixWorld();
 
     // sun, sky, fog
@@ -327,9 +337,10 @@ window.SantaGL = (() => {
     sunSprite.position.copy(camPos).add(sunDir.clone().multiplyScalar(50));
     stars.position.copy(camPos); skyDome.position.copy(camPos);
     atmo.visible = cam.alt > 0.03;
-    earth.visible = blend < 0.6; // at the rooftops the dish covers the view out to the fog
-    const surfaceVisible = earth.visible; // the surface overlays must go with it or they peek through from below the horizon
-    lights.visible = surfaceVisible; if (cities) cities.visible = surfaceVisible;
+    earth.visible = true; // the globe stays; a city's ground dish is drawn over it where one exists
+    const surfaceVisible = cam.alt > 0.004; // toy skylines only from altitude (they are tens of km tall)
+    if (cities) cities.visible = surfaceVisible;
+    lights.visible = false; // no navigation data outside the sleigh: the dash console carries it
     const sunEl = Math.asin(clamp(up.dot(sunDir), -1, 1)) / RAD;
     const tw = smooth(-16, 2, sunEl);
     const snowy = !!(climate && climate.snow);
@@ -357,9 +368,7 @@ window.SantaGL = (() => {
     const stops = lights.userData.stops, col = lights.geometry.getAttribute('color');
     stops.forEach((w, i) => { const c = (w.depart <= t || s.phase === 'done') ? DONE_CITY : TODO_CITY; col.setXYZ(i, c.r, c.g, c.b); }); col.needsUpdate = true;
     if (cities) { const key = `${s.stopsDone}:${s.phase}:${s.next && s.next.i}:${s.at && s.at.i}`; if (cities.userData.key !== key) { cities.userData.key = key; cityIndex.forEach((si, i) => { const w = stops[si]; cities.setColorAt(i, (w.depart <= t || s.phase === 'done' || s.at === w) ? DONE_CITY : (s.phase === 'flight' && s.next === w) ? NEXT_CITY : TODO_CITY); }); cities.instanceColor.needsUpdate = true; } }
-    if (s.phase === 'flight' && s.next && !s.next.pole) { nextLight.geometry.setFromPoints([xyz(s.next.lat, s.next.lon, 1.003)]); nextLight.visible = surfaceVisible; } else nextLight.visible = false;
-    routeLine.visible = s.phase !== 'done' && surfaceVisible;
-    if (s.phase === 'flight') { tailLine.geometry.setFromPoints(track(route, t - 150 * 60000, t).map(q2 => xyz(q2.lat, q2.lon, 1.0022))); tailLine.visible = surfaceVisible; } else tailLine.visible = false;
+    nextLight.visible = false; routeLine.visible = false; tailLine.visible = false;
 
     // the team and the weather
     if (sleigh) sleigh.update(dt, flying);
@@ -392,7 +401,8 @@ window.SantaGL = (() => {
     const gn = groundMesh && groundMesh.geometry.attributes.normal; const gw = groundMesh ? new THREE.Vector3(0, 1, 0).applyQuaternion(groundMesh.getWorldQuaternion(new THREE.Quaternion())) : null;
     dbg = { sunEl: +sunEl.toFixed(1), sunDot: +up.dot(sunDir).toFixed(3), atmoVisible: atmo.visible, earthVisible: earth.visible, groundNormalY0: gn ? +gn.getY(0).toFixed(3) : null, groundUpDotWorldUp: gw ? +gw.dot(up).toFixed(3) : null, groundSide: groundMat ? groundMat.side : null, groundVerts: groundMesh ? groundMesh.geometry.attributes.position.count : null, groundMat: matInfo(groundMat), streetsMat: matInfo(streetsMat), hemi: +hemi.intensity.toFixed(3), moonI: +moon.intensity.toFixed(3), legacyLights: renderer.useLegacyLights, camDown: +camFwd.dot(up).toFixed(3), camToCity: city ? +(camPos.distanceTo(xyz(city.lat, city.lon)) / KM).toFixed(3) : null, nearChildren: near.scene.children.length, blend: +blend.toFixed(3), city: city ? city.name : null, landmark: spec && spec.landmark ? spec.landmark.id : null, dioramas: [...dioramas.keys()], fogDensity: +fogDensity.toFixed(1), fogColor: '#' + fogColor.getHexString(), camAltKm: +(cam.alt / KM).toFixed(3), near: near.camera.near, reindeer: sleigh ? sleigh.deer.length : 0, teamReady: !!(sleigh && sleigh.state.ready), mixersRunning: !!(sleigh && sleigh.mixers.length), shadowMap: renderer.shadowMap.enabled, earthTextures: [!!earth.material.uniforms.dayMap.value, !!earth.material.uniforms.lightsMap.value], passes: 3, drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, snow: snow.visible };
 
-    // HUD label for the next stop: in front, over the horizon, and not when the landmark itself is in view
+    return { label: null }; // nothing is overlaid outside the sleigh
+    // (unreachable, kept for reference) HUD label for the next stop
     if (!s.next || s.next.pole) return { label: null };
     const v = xyz(s.next.lat, s.next.lon, 1.003);
     if (v.dot(up) < 1 / (1 + cam.alt)) return { label: null };
@@ -417,6 +427,7 @@ window.SantaGL = (() => {
   function debug() { return Object.assign({ running }, dbg); }
 
   api.fpsCap = 30;
+  api.setConsole = lines => { if (sleigh && sleigh.setConsole) sleigh.setConsole(lines); };
   Object.assign(api, { supported, init, setRoute, render, start, stop, resize, look, debug, _far: () => far, _near: () => near, _rig: () => rig });
   return api;
 })();

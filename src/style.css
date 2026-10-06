@@ -338,3 +338,6 @@ header.top, main, footer.foot, .lights { position: relative; z-index: 1; }
   .status .status-row { flex-wrap: wrap; }
   .status h1 { min-height: 0; }
 }
+
+/* with WebGL the view carries no overlays; the SVG fallback keeps its captions */
+.gl:not([hidden]) ~ .hud .pov-n, .gl:not([hidden]) ~ .hud #fp-next-label { display: none; }

@@ -485,8 +485,19 @@
     else if (s.phase === 'done') cap = 'Home. Reindeer unhitched, lights off, cookies under audit.';
     else if (s.status === 'delivering') { const lm = typeof landmarkFor === 'function' ? landmarkFor(s.at) : null; cap = `Over the rooftops of ${s.at.name}${lm ? ` · ${lm.label} dead ahead` : ''} · ${big(s.at.presents)} presents · next ${nextName}, ${fmtInt(haversineKm(s, s.next))} km`; }
     else cap = `Heading ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h · ${nextName} ${fmtInt(haversineKm(s, s.next))} km ahead · ${fmtDuration(s.etaMs)}`;
+    const coords = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
+    if (GL) { // all navigation data lives on the dash console inside the sleigh; nothing is overlaid on the view
+      $('pov-caption').textContent = ''; $('pov-coords').textContent = '';
+      const lines = [];
+      if (s.phase === 'pre') lines.push('LOADING BAY · THE WORKSHOP', `Launch in ${fmtDuration(s.untilLaunchMs)}`, `First stop ${s.next.name}`, `Sack ${tel.sackPct.toFixed(0)}% · ${coords}`);
+      else if (s.phase === 'done') lines.push('RUN COMPLETE', `${route.stopCount} stops · ${big(route.totalPresents)} presents`, `${fmtInt(route.totalKm)} km flown`, 'Cookies under audit');
+      else if (s.status === 'delivering') { const lm = typeof landmarkFor === 'function' ? landmarkFor(s.at) : null; lines.push(`${s.at.name.toUpperCase()} · ${localStamp(s.at)}`, lm ? `${lm.label} ahead` : `${big(s.at.presents)} presents`, `Next ${nextName} · ${fmtInt(haversineKm(s, s.next))} km · ${fmtDuration(s.etaMs)}`, `HDG ${hdg.toFixed(0)}° ${compass(hdg)} · ${coords}`); }
+      else lines.push(`${nextName.toUpperCase()} in ${fmtDuration(s.etaMs)}`, `${fmtInt(haversineKm(s, s.next))} km ahead`, `HDG ${hdg.toFixed(0)}° ${compass(hdg)} · ${fmtInt(s.speedKmh)} km/h`, `${fmtInt(tel.altitudeM)} m · ${coords}`);
+      GL.setConsole(lines);
+      return;
+    }
     $('pov-caption').textContent = cap;
-    $('pov-coords').textContent = `${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? 'E' : 'W'}`;
+    $('pov-coords').textContent = coords;
   }
 
   function setView(v) {

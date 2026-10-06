@@ -36,6 +36,13 @@ window.SantaSleigh = (() => {
     const seat = shadowed(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.3, 0.6), MAT.velvet)); seat.position.set(0, 0.85, 1.2); g.add(seat);
     const back = shadowed(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.12), MAT.red)); back.position.set(0, 1.3, 1.55); g.add(back);
     const bag = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.7, 14, 10), MAT.sack)); bag.scale.set(1, 0.8, 0.9); bag.position.set(0, 1.1, 2.0); g.add(bag);
+    // the dash console: a brass-bezelled panel tilted toward Santa; its canvas is redrawn by setConsole(lines)
+    const cc = document.createElement('canvas'); cc.width = 768; cc.height = 288;
+    const ctex = new THREE.CanvasTexture(cc); ctex.colorSpace = THREE.SRGBColorSpace; ctex.anisotropy = 4;
+    const bezel = shadowed(new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.44, 0.05), MAT.gold)); bezel.position.set(0, 1.18, -0.62); bezel.rotation.x = -0.95; g.add(bezel);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.36), new THREE.MeshStandardMaterial({ map: ctex, emissiveMap: ctex, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.9, roughness: .35, metalness: 0 }));
+    screen.position.set(0, 1.18 + 0.028 * Math.sin(0.95), -0.62 + 0.028 * Math.cos(0.95)); screen.rotation.x = -0.95; g.add(screen);
+    g.userData.console = { canvas: cc, ctx: cc.getContext('2d'), tex: ctex, last: '' };
     const lamp = new THREE.PointLight(0xffd9a0, 6, 8, 2); lamp.position.set(0, 1.3, -0.9); g.add(lamp);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), MAT.bulb); bulb.position.copy(lamp.position); g.add(bulb);
     g.position.set(0, -0.2, -0.4);
@@ -64,7 +71,7 @@ window.SantaSleigh = (() => {
   function create(opts = {}) {
     const lite = !!opts.lite;
     const rig = new THREE.Group(); rig.name = 'sleighRig';
-    rig.add(buildSleigh());
+    const sleighMesh = buildSleigh(); rig.add(sleighMesh);
     const deer = [], mixers = [], actions = [];
     const nose = new THREE.PointLight(0xff3a2a, 22, 30, 2); nose.visible = false; rig.add(nose);
     const noseBall = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), MAT.nose); noseBall.visible = false; rig.add(noseBall);
@@ -121,7 +128,26 @@ window.SantaSleigh = (() => {
       nose.intensity = 18 + 10 * (0.5 + 0.5 * Math.sin(state.t * 4.5));
     }
 
-    return { group: rig, update, state, deer, mixers };
+    // Draw the console: walnut panel, brass rule, up to four lines of warm text. Redraws only when the text changes.
+    function setConsole(lines) {
+      const c = sleighMesh.userData.console; if (!c) return;
+      const key = lines.join('|'); if (key === c.last) return; c.last = key;
+      const g = c.ctx, w = c.canvas.width, h = c.canvas.height;
+      const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#1d1510'); grd.addColorStop(1, '#0d0907');
+      g.fillStyle = grd; g.fillRect(0, 0, w, h);
+      g.strokeStyle = 'rgba(232,187,94,.55)'; g.lineWidth = 3; g.strokeRect(10, 10, w - 20, h - 20);
+      g.fillStyle = 'rgba(232,187,94,.35)'; g.fillRect(28, 78, w - 56, 2);
+      g.textBaseline = 'middle';
+      lines.slice(0, 4).forEach((ln, i) => {
+        const first = i === 0;
+        g.font = (first ? 'bold 44px ' : '34px ') + '"Patrick Hand", "Segoe Print", cursive';
+        g.fillStyle = first ? '#ffe9b0' : '#f3d9a4';
+        g.shadowColor = 'rgba(255,200,120,.55)'; g.shadowBlur = first ? 14 : 8;
+        g.fillText(ln, 32, first ? 48 : 108 + (i - 1) * 54, w - 64);
+      });
+      g.shadowBlur = 0; c.tex.needsUpdate = true;
+    }
+    return { group: rig, update, state, deer, mixers, setConsole };
   }
 
   return { create, FORMATION, MAT };

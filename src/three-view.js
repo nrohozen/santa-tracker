@@ -17,7 +17,7 @@ window.SantaGL = (() => {
   const far = {}, near = {}, rig = {};
   let earth, atmo, stars, sunSprite, skyDome, lights, nextLight, routeLine, tailLine, cities, cityIndex = [], cityRanges = new Map();
   let moon, hemi, snow, sleigh;
-  let route = null, fullTrack = [], last = null, running = false, rafId = 0;
+  let route = null, fullTrack = [], last = null, lastOut = null, running = false, rafId = 0, lastFrameAt = 0;
   const clock = new THREE.Clock();
   const dioramas = new Map(); // name → { group, spec, stop, lights, at }
   const look = { yaw: 0, pitch: 0, zoom: 1 };
@@ -50,7 +50,7 @@ window.SantaGL = (() => {
   function init(opts) {
     canvas = opts.canvas; lite = !!opts.lite;
     renderer = new THREE.WebGLRenderer({ canvas, antialias: !lite, alpha: false, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lite ? 1.25 : 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lite ? 1.25 : 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
     renderer.shadowMap.enabled = !lite; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -212,7 +212,7 @@ window.SantaGL = (() => {
   }
 
   // ---------- dioramas ----------
-  const LANDMARK_TOY = h => (h < 0.12 ? 2.6 : h < 0.3 ? 1.5 : 1.05); // small landmarks get a little help at sleigh height
+  const LANDMARK_TOY = (h, id) => (id === 'workshop' ? 1 : h < 0.12 ? 2.6 : h < 0.3 ? 1.5 : 1.05); // the Workshop is seen from the ground, real scale // small landmarks get a little help at sleigh height
   function ensureDiorama(stop) {
     if (!stop) return null;
     if (dioramas.has(stop.name)) { const e = dioramas.get(stop.name); e.at = performance.now(); return e; }
@@ -220,7 +220,7 @@ window.SantaGL = (() => {
     const spec = sceneSpec(stop, route ? route.year : new Date().getUTCFullYear());
     let inner;
     try { inner = SantaScenery.build(spec, { lite, year: route && route.year }); } catch (e) { console.warn('diorama build failed', stop.name, e); return null; }
-    if (spec.landmark) { let lm = null; inner.traverse(o => { if (!lm && o.name && o.name.startsWith('landmark')) lm = o; }); if (lm) lm.scale.setScalar(LANDMARK_TOY(spec.landmark.heightKm)); }
+    if (spec.landmark) { let lm = null; inner.traverse(o => { if (!lm && o.name && o.name.startsWith('landmark')) lm = o; }); if (lm) lm.scale.setScalar(LANDMARK_TOY(spec.landmark.heightKm, spec.landmark.id)); }
     // additive materials must not be fogged (fog colour would be ADDED and glow at the horizon); fade them with the haze instead
     inner.traverse(o => { if (o.material && o.material.blending === THREE.AdditiveBlending) { o.material.fog = false; o.material.needsUpdate = true; } });
     // the builder's dish winds with its normals pointing down (probe: groundNormalY0 = -1): render both sides so it is not culled from above
@@ -249,13 +249,17 @@ window.SantaGL = (() => {
 
   // ---------- camera state machine ----------
   // Where the sleigh "stands" at a city: 450 m short of the centre along the inbound track, 95 m up, nose toward it.
-  function cityPose(city, inboundFrom) {
+  function cityPose(city, inboundFrom, parked) {
     const c = xyz(city.lat, city.lon);
     let dir = inboundFrom ? xyz(inboundFrom.lat, inboundFrom.lon).sub(c) : new THREE.Vector3(0, 1, 0).cross(c);
     dir.sub(c.clone().multiplyScalar(dir.dot(c))); if (dir.lengthSq() < 1e-12) dir = new THREE.Vector3(0, 1, 0).cross(c); dir.normalize(); // tangent, back toward where we came from
     const lm = typeof landmarkFor === 'function' ? landmarkFor(city) : null;
-    const toyH = lm ? lm.heightKm * LANDMARK_TOY(lm.heightKm) : 0;
+    const toyH = lm ? lm.heightKm * LANDMARK_TOY(lm.heightKm, lm.id) : 0;
     const standoff = Math.max(0.3, toyH * 1.7, lm ? lm.footprintKm * 0.7 : 0), alt = 0.095 + Math.max(0, toyH * 0.3 - 0.03); // back off from tall or wide landmarks, climb a little for tall ones
+    if (parked) { // on the ground at the loading bay, nose toward the hall
+      const g = c.clone().add(dir.clone().multiplyScalar(0.095 * KM)).normalize();
+      return { ground: g, fwd: dir.clone().negate(), alt: 0.0014 * KM, pitch: 3 };
+    }
     const ground = c.clone().add(dir.clone().multiplyScalar(standoff * KM)).normalize();
     return { ground, fwd: dir.clone().negate(), alt: alt * KM, pitch: -6 };
   }
@@ -281,13 +285,13 @@ window.SantaGL = (() => {
   let dbg = {};
   function draw(s, t, dt) {
     if (!renderer || !route) return null;
-    const { blend, city } = blendFor(s, t);
+    const { blend, city, parked } = blendFor(s, t);
     const cruise = cruisePose(s);
     let want, climate = null, spec = null, entry = null;
     if (city && blend > 0) {
       entry = ensureDiorama(city);
       const prev = city.i > 0 && route.waypoints[city.i - 1] ? route.waypoints[city.i - 1] : null;
-      const cp = cityPose(city, prev);
+      const cp = cityPose(city, prev, parked);
       want = { ground: slerpV(cruise.ground, cp.ground, blend), fwd: slerpV(cruise.fwd, cp.fwd, blend), alt: Math.exp(lerp(Math.log(cruise.alt * look.zoom), Math.log(cp.alt * look.zoom), blend)), pitch: lerp(cruise.pitch, cp.pitch, blend) };
       if (entry) { climate = entry.spec.climate; spec = entry.spec; }
     } else want = { ground: cruise.ground, fwd: cruise.fwd, alt: cruise.alt * look.zoom, pitch: cruise.pitch };
@@ -399,17 +403,20 @@ window.SantaGL = (() => {
   }
 
   // ---------- public ----------
-  function render(s, t) { last = { s, t }; return draw(s, t, 0); }
-  function loop() {
+  // While the loop runs, render() only hands over the state; the loop draws once per frame (capped by api.fpsCap).
+  function render(s, t) { last = { s, t }; if (running) return lastOut; lastOut = draw(s, t, 0); return lastOut; }
+  function loop(now) {
     if (!running) return;
-    const dt = Math.min(clock.getDelta(), 0.05);
-    if (last) { const out = draw(last.s, last.t, dt); if (api.labelSink) api.labelSink(last.s, out && out.label); }
     rafId = requestAnimationFrame(loop);
+    const cap = api.fpsCap || 30; if (now - lastFrameAt < 1000 / cap - 2) return; lastFrameAt = now;
+    const dt = Math.min(clock.getDelta(), 0.05);
+    if (last) { lastOut = draw(last.s, last.t, dt); if (api.labelSink) api.labelSink(last.s, lastOut && lastOut.label); }
   }
   function start() { if (running) return; running = true; clock.getDelta(); rafId = requestAnimationFrame(loop); }
   function stop() { running = false; cancelAnimationFrame(rafId); }
   function debug() { return Object.assign({ running }, dbg); }
 
+  api.fpsCap = 30;
   Object.assign(api, { supported, init, setRoute, render, start, stop, resize, look, debug, _far: () => far, _near: () => near, _rig: () => rig });
   return api;
 })();

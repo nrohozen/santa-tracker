@@ -161,7 +161,7 @@ h2 { font: 700 1.5rem/1.2 var(--display); margin: 0 0 10px; color: var(--ink); }
 .midnight { fill: none; stroke: #f5c451; stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 4; }
 .trail { fill: none; stroke: #f5c451; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
 .stop { fill: #ffffff; fill-opacity: .3; stroke: none; r: 2.1; }
-.stop.done { fill: #3ddc84; fill-opacity: 1; r: 2.8; filter: drop-shadow(0 0 2px rgba(61, 220, 132, .9)); animation: pop .6s ease-out; }
+.stop.done { fill: #3ddc84; fill-opacity: 1; r: 3; stroke: rgba(61, 220, 132, .45); stroke-width: 2; animation: pop .6s ease-out; }
 .stop.next { fill: #e5484d; fill-opacity: 1; r: 3.6; filter: drop-shadow(0 0 3px rgba(229, 72, 77, .9)); }
 @keyframes pop { from { r: 8; fill-opacity: .2; } to { r: 2.8; fill-opacity: 1; } }
 .stop:hover { fill-opacity: 1; r: 4; }
@@ -313,4 +313,28 @@ header.top, main, footer.foot, .lights { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
   .bulbs circle, .bar-fill, .stop.done, .sleigh-halo { animation: none; }
   .year-card:hover { transform: none; }
+}
+
+/* numbers that tick every second must not change width (the hand font has no tabular figures) */
+.clock-value, .tile .value, .systems dd, #scrub-time { font-variant-numeric: tabular-nums; }
+.clock-value { display: inline-block; min-width: 6.2ch; text-align: right; }
+.clock { align-items: flex-end; }
+
+/* ---- nothing that ticks may change the page height (the status card used to re-wrap every second) ---- */
+.status .status-row { flex-wrap: nowrap; align-items: flex-start; gap: 24px; }
+.status .status-row > div:first-child { flex: 1 1 auto; min-width: 0; }
+.status .clocks { flex: 0 0 auto; }
+.status h1 { min-height: 2.4em; }
+.status .subline { min-height: 1.5em; }
+.status .elfline { min-height: 3.2em; }
+.status .hint { min-height: 1.6em; }
+.clock-value { white-space: nowrap; }
+.tile .value { min-height: 1.15em; }
+.tile .sub { min-height: 2.6em; }
+.log { min-height: 232px; }
+#year-notes { min-height: 3.2em; }
+#ws-sub { min-height: 2.6em; }
+@media (max-width: 760px) {
+  .status .status-row { flex-wrap: wrap; }
+  .status h1 { min-height: 0; }
 }

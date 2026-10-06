@@ -265,6 +265,7 @@
   function setPlaying(p) {
     playing = p && mode === 'preview';
     if (playing && simT >= route.home) simT = route.launch;
+    if (GL) GL.fpsCap = playing ? 60 : 30;
     $('play').textContent = playing ? '❚❚ Pause' : '▶ Play';
     $('play').setAttribute('aria-pressed', String(playing));
     if (!playing) syncUrl();
